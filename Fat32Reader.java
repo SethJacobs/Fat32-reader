@@ -57,21 +57,5 @@ public class Fat32Reader {
         int result = Integer.parseInt(hex, 16);
         return result;
     }
-
-    public String getStringFromBytes(int offset, int size) {
-        byte[] newData = new byte[size];
-        int j = size - 1;
-        for(int i = offset + size - 1; i >= offset; i--){
-            newData[j] = data[i];
-            j--;
-        }
-        String s = new String(newData); // turns byte array into string. Java's gift to humanity
-        if(newData[0] == -27){
-           char[] charArry = s.toCharArray();
-           charArry[0] = (char)229;
-           s = String.valueOf(charArry);
-        }
-        return s;
-    }
     
 }
