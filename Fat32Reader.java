@@ -11,7 +11,7 @@ public class Fat32Reader {
 
 	int BPB_BytsPerSec, BPB_SecPerClus, BPB_RsvdSecCnt, BPB_NumFATs, BPB_FATSz32, BPB_RootClus;
 	int BPB_RootEntCnt, RootDirSectors, FirstDataSector, FATOffSet, FatSecNum, FATEntOffset;
-	int FirstSectorofCluster, FatTableStart;
+	int FirstSectorofCluster, FatTableStart, bytesPerCluster;
 	byte[] data;
 
 	public static void main(String[] args) throws IOException {
@@ -21,6 +21,7 @@ public class Fat32Reader {
 	}
 
 	public void initiate(String paths) throws IOException {
+		ArrayList<Integer> list = new ArrayList<>();
 		Path path = Paths.get(paths);
 		data = Files.readAllBytes(path);
 		BPB_BytsPerSec = getBytes(11,2);
@@ -33,7 +34,21 @@ public class Fat32Reader {
 		RootDirSectors = ((BPB_RootEntCnt * 32) + (BPB_BytsPerSec - 1)) / BPB_BytsPerSec;
 		FirstDataSector = BPB_RsvdSecCnt + (BPB_NumFATs * BPB_FATSz32) + RootDirSectors;
 		FirstSectorofCluster = ((BPB_RootClus - 2) * BPB_SecPerClus) + FirstDataSector;
-		getDir(new ArrayList<>(), BPB_RootClus);
+		getDir(list, BPB_RootClus);
+		for (int j : list) {
+			for (int i = j;  i < j + bytesPerCluster; i += 64)  {
+				System.out.println(getStringFromBytes(i, 11));
+			}
+		}
+	}
+
+	private static String toASCII(int value){
+		int length = 4;
+		StringBuilder builder = new StringBuilder(length);
+		for (int i = length -1; i >= 0; i--) {
+			builder.append((char) ((value >> (8*i)) & 0xFF));
+		}
+		return builder.toString();
 	}
 
 	public void info() {
@@ -70,7 +85,25 @@ public class Fat32Reader {
         int nextClus = getBytes(clusterOffset, 4);
         int firstSectorofDirCluster = ((n - 2) * BPB_SecPerClus) + FirstDataSector;
         int startOfDir = firstSectorofDirCluster * BPB_BytsPerSec;
+		bytesPerCluster = BPB_BytsPerSec * BPB_SecPerClus;
 		list.add(startOfDir);
+		// getDir(list, nextClus);
 	}
+
+	public String getStringFromBytes(int offset, int size) {
+        byte[] newData = new byte[size];
+        int j = size - 1;
+        for(int i = offset + size - 1; i >= offset; i--){
+            newData[j] = data[i];
+            j--;
+        }
+        String s = new String(newData); // turns byte array into string. Java's gift to humanity
+        if(newData[0] == -27){
+           char[] charArry = s.toCharArray();
+           charArry[0] = (char)229;
+           s = String.valueOf(charArry);
+        }
+        return s;
+    }
 	
 }
