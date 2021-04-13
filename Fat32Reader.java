@@ -13,6 +13,7 @@ public class Fat32Reader {
 	int BPB_RootEntCnt, RootDirSectors, FirstDataSector, FATOffSet, FatSecNum, FATEntOffset;
 	int FirstSectorofCluster, FatTableStart, bytesPerCluster;
 	byte[] data;
+	ArrayList<String> lsList = new ArrayList<>();
 
 	public static void main(String[] args) throws IOException {
 		Fat32Reader fr = new Fat32Reader();
@@ -37,18 +38,13 @@ public class Fat32Reader {
 		getDir(list, BPB_RootClus);
 		for (int j : list) {
 			for (int i = j;  i < j + bytesPerCluster; i += 64)  {
-				System.out.println(getStringFromBytes(i, 11));
+				String dir = getStringFromBytes(i, 11);
+				if (!dir.contains("~1") && i != j){
+					lsList.add(dir);
+				}
 			}
 		}
-	}
-
-	private static String toASCII(int value){
-		int length = 4;
-		StringBuilder builder = new StringBuilder(length);
-		for (int i = length -1; i >= 0; i--) {
-			builder.append((char) ((value >> (8*i)) & 0xFF));
-		}
-		return builder.toString();
+		ls();
 	}
 
 	public void info() {
@@ -60,6 +56,20 @@ public class Fat32Reader {
 	}
 
 	public void ls(){
+		for (String dir : lsList) {
+			if(dir.endsWith("   ")){
+				System.out.print(dir.replaceAll(" ", ""));
+				continue;
+			}
+			dir = dir.replaceAll(" ", "");
+			StringBuilder sb = new StringBuilder(dir);
+			sb.insert(dir.length()-3, ".");
+			System.out.print(sb.toString() + " ");
+		}
+		System.out.println();
+	}
+
+	public void ls(String dirName){
 
 	}
 
@@ -76,18 +86,15 @@ public class Fat32Reader {
 	}
 
 	public void getDir(ArrayList<Integer> list, int start) {
-		int n = start;
+		int n = start; 
 		FATOffSet = n * 4;
 		FatSecNum = BPB_RsvdSecCnt + (FATOffSet / BPB_BytsPerSec);
 		FatTableStart = FatSecNum * BPB_BytsPerSec;
 		FATEntOffset = FATOffSet % BPB_BytsPerSec;
-		int clusterOffset = FATEntOffset + FatTableStart;
-        int nextClus = getBytes(clusterOffset, 4);
         int firstSectorofDirCluster = ((n - 2) * BPB_SecPerClus) + FirstDataSector;
         int startOfDir = firstSectorofDirCluster * BPB_BytsPerSec;
 		bytesPerCluster = BPB_BytsPerSec * BPB_SecPerClus;
 		list.add(startOfDir);
-		// getDir(list, nextClus);
 	}
 
 	public String getStringFromBytes(int offset, int size) {
@@ -97,11 +104,11 @@ public class Fat32Reader {
             newData[j] = data[i];
             j--;
         }
-        String s = new String(newData); // turns byte array into string. Java's gift to humanity
+        String s = new String(newData);
         if(newData[0] == -27){
-           char[] charArry = s.toCharArray();
-           charArry[0] = (char)229;
-           s = String.valueOf(charArry);
+           char[] charArray = s.toCharArray();
+           charArray[0] = (char)229;
+           s = String.valueOf(charArray);
         }
         return s;
     }
