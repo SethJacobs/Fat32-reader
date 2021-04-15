@@ -12,6 +12,7 @@ public class Fat32Reader {
 	int BPB_BytsPerSec, BPB_SecPerClus, BPB_RsvdSecCnt, BPB_NumFATs, BPB_FATSz32, BPB_RootClus;
 	int BPB_RootEntCnt, RootDirSectors, FirstDataSector, FATOffSet, FatSecNum, FATEntOffset;
 	int FirstSectorofCluster, FatTableStart, bytesPerCluster;
+	Directory currentDIR, root;
 	byte[] data;
 	ArrayList<String> lsList = new ArrayList<>();
 
@@ -19,6 +20,7 @@ public class Fat32Reader {
 		Fat32Reader fr = new Fat32Reader();
 		fr.initiate(args[0]);
 		fr.info();
+		fr.ls();
 	}
 
 	public void initiate(String paths) throws IOException {
@@ -36,15 +38,21 @@ public class Fat32Reader {
 		FirstDataSector = BPB_RsvdSecCnt + (BPB_NumFATs * BPB_FATSz32) + RootDirSectors;
 		FirstSectorofCluster = ((BPB_RootClus - 2) * BPB_SecPerClus) + FirstDataSector;
 		getDir(list, BPB_RootClus);
+		
 		for (int j : list) {
 			for (int i = j;  i < j + bytesPerCluster; i += 64)  {
+				int attr = getBytes(i+11, 1);
 				String dir = getStringFromBytes(i, 11);
-				if (!dir.contains("~1") && i != j){
-					lsList.add(dir);
+				String name = nameNice(dir);
+
+				if (attr == 8) {
+					root = new Directory(null, i, name);
+				} else if (!dir.contains("~1") && i != j){
+					root.addChild(new Directory(root, i, name));
 				}
 			}
 		}
-		ls();
+		currentDIR = root;
 	}
 
 	public void info() {
@@ -69,8 +77,29 @@ public class Fat32Reader {
 		System.out.println();
 	}
 
-	public void ls(String dirName){
+	public String nameNice(String dir) {
+		if(dir.endsWith("   ")){
+			System.out.print(dir.replaceAll(" ", ""));
+			return dir;
+		}
+		dir = dir.replaceAll(" ", "");
+		StringBuilder sb = new StringBuilder(dir);
+		sb.insert(dir.length()-3, ".");
+		return sb.toString();
+	}
 
+	public void ls(String dirName){
+		switch (dirName) {
+			case ".":
+				ls();
+				break;
+			case "..":
+
+				break;
+			
+			default:
+				break;
+		}
 	}
 
 	public int getBytes(int offset, int size) {
