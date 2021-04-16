@@ -44,15 +44,44 @@ public class Fat32Reader {
 				int attr = getBytes(i+11, 1);
 				String dir = getStringFromBytes(i, 11);
 				String name = nameNice(dir);
-
 				if (attr == 8) {
 					root = new Directory(null, i, name);
-				} else if (!dir.contains("~1") && i != j){
+				} else if (attr == 16 && !dir.contains("~1") && i != j){
 					root.addChild(new Directory(root, i, name));
+					System.out.println("printing this dir " + name);
+					// String low = Integer.toHexString(getBytes(i + 26, 2));
+					// String hi = Integer.toHexString(getBytes(i + 20, 2));
+					ArrayList<Integer> list2 = new ArrayList<>();
+					// getDir(list2, Integer.parseInt(hi+low,16));
+					getDir(list2, getBytes(i+26, 2));
+					name(list2);
 				}
 			}
 		}
 		currentDIR = root;
+	}
+
+	public void name(ArrayList<Integer> list) {
+		for (int j : list) {
+			for (int i = j;  i < j + bytesPerCluster; i += 64)  {
+				// int attr = getBytes(i+11, 1);
+				String dir = getStringFromBytes(i, 11);
+				String name = nameNice(dir);
+				System.out.println(name);
+				// if (attr == 8) {
+				// 	root = new Directory(null, i, name);
+				// } else if (attr == 16 && !dir.contains("~1") && i != j){
+				// 	root.addChild(new Directory(root, i, name));
+				// 	System.out.println("printing this dir " + name);
+				// 	ArrayList<Integer> test = new ArrayList<>();
+				// 	getDir(test, i);
+				// 	for(Integer inte : test)
+				// 	{
+				// 		System.out.println(inte);
+				// 	}
+				// }
+			}
+		}
 	}
 
 	public void info() {
@@ -114,7 +143,7 @@ public class Fat32Reader {
 		return result;
 	}
 
-	public void getDir(ArrayList<Integer> list, int start) {
+	public int getDir(ArrayList<Integer> list, int start) {
 		int n = start; 
 		FATOffSet = n * 4;
 		FatSecNum = BPB_RsvdSecCnt + (FATOffSet / BPB_BytsPerSec);
@@ -124,6 +153,7 @@ public class Fat32Reader {
         int startOfDir = firstSectorofDirCluster * BPB_BytsPerSec;
 		bytesPerCluster = BPB_BytsPerSec * BPB_SecPerClus;
 		list.add(startOfDir);
+		return startOfDir;
 	}
 
 	public String getStringFromBytes(int offset, int size) {
