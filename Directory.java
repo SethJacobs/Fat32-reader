@@ -1,8 +1,8 @@
 import java.util.ArrayList;
 
 public class Directory {
-    Directory parent;
-    int start;
+    public final Directory parent;
+    public final int start;
     ArrayList<Directory> children = new ArrayList<>();
 
     public Directory (Directory parent, int start, String name) {

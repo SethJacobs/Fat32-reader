@@ -63,7 +63,7 @@ public class Fat32Reader {
 
 	public void name(ArrayList<Integer> list) {
 		for (int j : list) {
-			for (int i = j;  i < j + bytesPerCluster; i += 64)  {
+			for (int i = j-32;  i < j + bytesPerCluster; i += 64)  {
 				// int attr = getBytes(i+11, 1);
 				String dir = getStringFromBytes(i, 11);
 				String name = nameNice(dir);
@@ -92,23 +92,9 @@ public class Fat32Reader {
 		System.out.println("BPB_FATSz32: 0x" + Integer.toHexString(BPB_FATSz32) + ", " + BPB_FATSz32);
 	}
 
-	public void ls(){
-		for (String dir : lsList) {
-			if(dir.endsWith("   ")){
-				System.out.print(dir.replaceAll(" ", ""));
-				continue;
-			}
-			dir = dir.replaceAll(" ", "");
-			StringBuilder sb = new StringBuilder(dir);
-			sb.insert(dir.length()-3, ".");
-			System.out.print(sb.toString() + " ");
-		}
-		System.out.println();
-	}
-
 	public String nameNice(String dir) {
 		if(dir.endsWith("   ")){
-			System.out.print(dir.replaceAll(" ", ""));
+			dir.replaceAll(" ", "");
 			return dir;
 		}
 		dir = dir.replaceAll(" ", "");
@@ -117,13 +103,50 @@ public class Fat32Reader {
 		return sb.toString();
 	}
 
+	public void ls(){
+		for (int i = currentDIR.start;  i < currentDIR.start + bytesPerCluster; i += 64)  {
+			int attr = getBytes(i+11, 1);
+			String dir = getStringFromBytes(i, 11);
+			String name = nameNice(dir);
+			if (attr == 8) {
+				root = new Directory(null, i, name);
+			} else if (attr == 16 && !dir.contains("~1") && i != currentDIR.start){
+				root.addChild(new Directory(root, i, name));
+				System.out.println("printing this dir " + name);
+				// String low = Integer.toHexString(getBytes(i + 26, 2));
+				// String hi = Integer.toHexString(getBytes(i + 20, 2));
+				ArrayList<Integer> list2 = new ArrayList<>();
+				// getDir(list2, Integer.parseInt(hi+low,16));
+				getDir(list2, getBytes(i+26, 2));
+				name(list2);
+			}
+		}
+	// 	for (String dir : lsList) {
+	// 		if(dir.endsWith("   ")){
+	// 			System.out.print(dir.replaceAll(" ", ""));
+	// 			continue;
+	// 		}
+	// 		dir = dir.replaceAll(" ", "");
+	// 		StringBuilder sb = new StringBuilder(dir);
+	// 		sb.insert(dir.length()-3, ".");
+	// 		System.out.print(sb.toString() + " ");
+	// 	}
+	// 	System.out.println();
+		
+	}
+
 	public void ls(String dirName){
 		switch (dirName) {
 			case ".":
 				ls();
 				break;
 			case "..":
-
+				if(currentDIR != root){
+					currentDIR = currentDIR.parent;
+					ls();
+					
+				}
+				
 				break;
 			
 			default:
