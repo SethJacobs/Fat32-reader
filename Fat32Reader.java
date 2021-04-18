@@ -19,8 +19,11 @@ public class Fat32Reader {
 	public static void main(String[] args) throws IOException {
 		Fat32Reader fr = new Fat32Reader();
 		fr.initiate(args[0]);
-		fr.info();
-		fr.ls();
+		// fr.info();
+		fr.ls("DIR\\A\\SPEC\\..\\..\\..");
+		// while (true){
+		// 	Scanner sc = new Scanner(System.in);
+		// }
 	}
 
 	public void initiate(String paths) throws IOException {
@@ -38,51 +41,10 @@ public class Fat32Reader {
 		FirstDataSector = BPB_RsvdSecCnt + (BPB_NumFATs * BPB_FATSz32) + RootDirSectors;
 		FirstSectorofCluster = ((BPB_RootClus - 2) * BPB_SecPerClus) + FirstDataSector;
 		FatTableStart = FatSecNum * BPB_BytsPerSec;
+		bytesPerCluster = BPB_BytsPerSec * BPB_SecPerClus;
 		root = getDir(list, BPB_RootClus);
-		
-		for (int i = root;  i < root + bytesPerCluster; i += 64)  {
-			int attr = getBytes(i+11, 1);
-			String dir = getStringFromBytes(i, 11);
-			String name = nameNice(dir);
-			if (attr == 8){
-				root = i;
-			} else if (attr == 16 && !dir.contains("~1") && i != root){
-				System.out.println("printing this dir " + name);
-				// String low = Integer.toHexString(getBytes(i + 26, 2));
-				// String hi = Integer.toHexString(getBytes(i + 20, 2));
-				ArrayList<Integer> list2 = new ArrayList<>();
-				// getDir(list2, Integer.parseInt(hi+low,16));
-				clustInFat = getBytes(i+26, 2);
-				currentDIR = clustInFat;
-				getDir(list2, clustInFat);
-				// name(list2);
-			}
-		}
 		currentDIR = root;
 	}
-
-	// public void name(ArrayList<Integer> list) {
-	// 	for (int j : list) {
-	// 		for (int i = j-32;  i < j + bytesPerCluster; i += 64)  {
-	// 			// int attr = getBytes(i+11, 1);
-	// 			String dir = getStringFromBytes(i, 11);
-	// 			String name = nameNice(dir);
-	// 			System.out.println(name);
-	// 			// if (attr == 8) {
-	// 			// 	root = new Directory(null, i, name);
-	// 			// } else if (attr == 16 && !dir.contains("~1") && i != j){
-	// 			// 	root.addChild(new Directory(root, i, name));
-	// 			// 	System.out.println("printing this dir " + name);
-	// 			// 	ArrayList<Integer> test = new ArrayList<>();
-	// 			// 	getDir(test, i);
-	// 			// 	for(Integer inte : test)
-	// 			// 	{
-	// 			// 		System.out.println(inte);
-	// 			// 	}
-	// 			// }
-	// 		}
-	// 	}
-	// }
 
 	public void info() {
 		System.out.println("BPB_BytsPerSec: 0x" + Integer.toHexString(BPB_BytsPerSec) + ", " + BPB_BytsPerSec);
@@ -102,68 +64,114 @@ public class Fat32Reader {
 		sb.insert(dir.length()-3, ".");
 		return sb.toString();
 	}
-	int counter = 0;
-	public void ls(){
-		boolean end = false;
-		for (int i = currentDIR;  i < currentDIR + bytesPerCluster; i += 64)  {
-			if(getBytes(i,1) == 0){
-				end = true;
-				break; 
+
+	public void ls(int dir){
+		ArrayList<String> files = new ArrayList<>();
+		if (currentDIR == root){
+			for (int i = root;  i < root + bytesPerCluster; i += 64)  {
+				String dirName = getStringFromBytes(i, 11);
+				dirName = nameNice(dirName).trim();
+				if (i != root && !dirName.contains("~1"))
+					files.add(dirName);
 			}
-			int attr = getBytes(i+11, 1);
-			String dir = getStringFromBytes(i, 11);
-			String name = nameNice(dir).trim();
-			// System.out.println(name);
-			// if(getBytes(1,1) == 0x58) System.out.println(name + " hiiiiii");
-			if (attr == 8) {
-				root = i;
-			} else if (!dir.contains("~1") && i != root){
-				System.out.println(name + " " + counter++);
-				// // String low = Integer.toHexString(getBytes(i + 26, 2));
-				// // String hi = Integer.toHexString(getBytes(i + 20, 2));
-				// ArrayList<Integer> list2 = new ArrayList<>();
-				// // getDir(list2, Integer.parseInt(hi+low,16));
+		}
+		ArrayList<Integer> dirStarts = new ArrayList<Integer>();
+		String low = Integer.toHexString(getBytes(dir + 26, 2));
+		String hi = Integer.toHexString(getBytes(dir + 20, 2));
+		int firstclust = Integer.parseInt(hi + low, 16);
+		// clustInFat = getBytes(i+26, 2);
+		getDir(dirStarts, firstclust);
+		for (Integer integer : dirStarts) {
+			for (int j = integer + 32; j < integer + bytesPerCluster; j+= 64) {
+				String currentName = getStringFromBytes(j, 11);
+				if (currentName.contains("\u0000")) continue;
+				currentName = nameNice(currentName).trim();
+				files.add(currentName);
+			}
+		}
+		Collections.sort(files);
+		for (String file : files) {
+			System.out.print(file + " ");
+		}
+	}
+
+	public void goToDir(int dir, StringTokenizer st, String fullPath) {
+		boolean error = false;
+		boolean found = false;
+		Stack<Integer> path = new Stack<>();
+		path.push(root);
+		while(st.hasMoreTokens()){
+			found = false;
+			String name = st.nextToken();
+			if(name.equals("..")){
+				found = true;
+				if (path.peek() == root) {
+					System.out.println("Error: No Directory Found");
+					error = true;
+				} else{
+					path.pop();
+					currentDIR = path.peek();
+				}
+			} else if (currentDIR == root){
+				for (int i = root;  i < root + bytesPerCluster; i += 64)  {
+					int attr = getBytes(i+11, 1);
+					String dirName = getStringFromBytes(i, 11);
+					dirName = nameNice(dirName).trim();
+					if (attr == 16 && !dirName.contains("~1") && i != root){
+						if (dirName.equals(name)) {
+							found = true;
+							path.push(i);
+							currentDIR = i;
+							break;
+						}
+					}
+				}
+			} else {
+				ArrayList<Integer> dirStarts = new ArrayList<Integer>();
+				String low = Integer.toHexString(getBytes(currentDIR+ 26, 2));
+				String hi = Integer.toHexString(getBytes(currentDIR + 20, 2));
+				int firstclust = Integer.parseInt(hi + low, 16);
 				// clustInFat = getBytes(i+26, 2);
-				// currentDIR = clustInFat;
-				// getDir(list2, clustInFat);
-				// name(list2);
+				getDir(dirStarts, firstclust);
+				for (Integer integer : dirStarts) {
+					for (int j = integer+32; j < integer + bytesPerCluster; j+= 64) {
+						String currentName = getStringFromBytes(j, 11);
+						currentName = nameNice(currentName).trim();
+						// System.out.println(currentName + counter++);
+						if (currentName.equals(name)) {
+							found = true;
+							path.push(j);
+							currentDIR = j;
+							continue;
+						}
+					}
+				}
 			}
 		}
-		if (end == false){
-			currentDIR = getBytes(FatTableStart + (clustInFat * 4), 4);
-			if(currentDIR <= 268435447) {
-				clustInFat = currentDIR;
-				currentDIR = getDir(new ArrayList<Integer>(), currentDIR) + 32;
-				ls();
-			}
-			
+		if (found == false){
+			error = true;
+			System.out.println("Error: " + fullPath + " is not a directory");
 		}
-	// 	for (String dir : lsList) {
-	// 		if(dir.endsWith("   ")){
-	// 			System.out.print(dir.replaceAll(" ", ""));
-	// 			continue;
-	// 		}
-	// 		dir = dir.replaceAll(" ", "");
-	// 		StringBuilder sb = new StringBuilder(dir);
-	// 		sb.insert(dir.length()-3, ".");
-	// 		System.out.print(sb.toString() + " ");
-	// 	}
-	// 	System.out.println();
-		
+		if(error == false){ 
+			ls(currentDIR);
+		}
+	}
+
+	public void splitPath(String path) {
+		StringTokenizer st = new StringTokenizer(path, "\\");
+		goToDir(root, st, path);
+		// changeDirectory(st.nextToken());
 	}
 
 	public void ls(String dirName){
 		switch (dirName) {
 			case ".":
-				ls();
+				ls(currentDIR);
 				break;
 			case "..":
 				if(currentDIR != root){
-					// currentDIR = currentDIR.parent;
-					// ls();
-					ls();
-					
-				} else System.out.println("Error!!!");
+					ls(currentDIR);
+				} else System.out.println("Error: No Directory Found");
 				
 				break;
 			
@@ -173,24 +181,8 @@ public class Fat32Reader {
 		}
 	}
 
-	public void splitPath(String path) {
-		StringTokenizer st = new StringTokenizer(path, "\\");
-		changeDirectory(st.nextToken());
+	public void stat() {
 		
-	}
-
-	public void changeDirectory(String name) {
-		//loop through current directory folders
-		for (int i = 0; i < data.length; i++) {
-			if ("filename".equals(name)){
-				splitPath("fileName");
-			}
-		}
-	}
-
-	public int nextDir(int dir) {
-		currentDIR = getBytes(dir+26, 2);
-		return getDir(new ArrayList<Integer>(), clustInFat);
 	}
 
 	public int getBytes(int offset, int size) {
@@ -211,10 +203,15 @@ public class Fat32Reader {
 		FatSecNum = BPB_RsvdSecCnt + (FATOffSet / BPB_BytsPerSec);
 		FatTableStart = FatSecNum * BPB_BytsPerSec;
 		FATEntOffset = FATOffSet % BPB_BytsPerSec;
+		int clusterOffset = FATEntOffset + FatTableStart;
+		int nextClus = getBytes(clusterOffset, 4);
         int firstSectorofDirCluster = ((n - 2) * BPB_SecPerClus) + FirstDataSector;
         int startOfDir = firstSectorofDirCluster * BPB_BytsPerSec;
-		bytesPerCluster = BPB_BytsPerSec * BPB_SecPerClus;
+		// bytesPerCluster = BPB_BytsPerSec * BPB_SecPerClus;
 		list.add(startOfDir);
+		if(nextClus <= 268435447) {
+            getDir(list, nextClus); //recursively search the next cluster
+        }
 		return startOfDir;
 	}
 
