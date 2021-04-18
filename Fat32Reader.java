@@ -19,11 +19,30 @@ public class Fat32Reader {
 	public static void main(String[] args) throws IOException {
 		Fat32Reader fr = new Fat32Reader();
 		fr.initiate(args[0]);
-		// fr.info();
-		fr.ls("DIR\\A\\SPEC\\..\\..\\..");
-		// while (true){
-		// 	Scanner sc = new Scanner(System.in);
-		// }
+		// // fr.info();
+		// fr.ls("DIR\\A\\SPEC\\..\\..\\..");
+		// fr.stat("DIR");
+		Scanner sc = new Scanner(System.in);
+		while (true){
+			System.out.print("/] ");
+			String input = sc.nextLine();
+			String[] arg = input.split(" ");
+			switch (arg[0]) {
+				case "info":
+					fr.info();
+					break;
+				case "ls":
+					if(arg.length == 1) fr.ls(".");
+					else fr.ls(arg[1]);
+					break;
+				case "stat":
+					if(arg.length == 1) fr.stat(".");
+					else fr.stat(arg[1]);
+					break;
+				default:
+					System.out.println("Error: Invalid Argument");
+			}
+		}
 	}
 
 	public void initiate(String paths) throws IOException {
@@ -90,10 +109,12 @@ public class Fat32Reader {
 			}
 		}
 		Collections.sort(files);
+		System.out.print(". ");
 		for (String file : files) {
 			System.out.print(file + " ");
 		}
 		currentDIR = root;
+		System.out.println(" ");
 	}
 
 	public void goToDir(int dir, StringTokenizer st, String fullPath) {
@@ -164,6 +185,73 @@ public class Fat32Reader {
 		// changeDirectory(st.nextToken());
 	}
 
+	public void statPath(String path){
+		StringTokenizer st = new StringTokenizer(path, "\\");
+		goToDirStat(root, st, path);
+	}
+
+	public void goToDirStat(int dir, StringTokenizer st, String fullPath){
+		boolean error = false;
+		boolean found = false;
+		Stack<Integer> path = new Stack<>();
+		path.push(root);
+		while(st.hasMoreTokens()){
+			found = false;
+			String name = st.nextToken();
+			if(name.equals("..")){
+				found = true;
+				if (path.peek() == root) {
+					System.out.println("Error: No Directory Found");
+					error = true;
+				} else{
+					path.pop();
+					currentDIR = path.peek();
+				}
+			} else if (currentDIR == root){
+				for (int i = root;  i < root + bytesPerCluster; i += 64)  {
+					int attr = getBytes(i+11, 1);
+					String dirName = getStringFromBytes(i, 11);
+					dirName = nameNice(dirName).trim();
+					if ( !dirName.contains("~1") && i != root){
+						if (dirName.equals(name)) {
+							found = true;
+							path.push(i);
+							currentDIR = i;
+							break;
+						}
+					}
+				}
+			} else {
+				ArrayList<Integer> dirStarts = new ArrayList<Integer>();
+				String low = Integer.toHexString(getBytes(currentDIR+ 26, 2));
+				String hi = Integer.toHexString(getBytes(currentDIR + 20, 2));
+				int firstclust = Integer.parseInt(hi + low, 16);
+				// clustInFat = getBytes(i+26, 2);
+				getDir(dirStarts, firstclust);
+				for (Integer integer : dirStarts) {
+					for (int j = integer+32; j < integer + bytesPerCluster; j+= 64) {
+						String currentName = getStringFromBytes(j, 11);
+						currentName = nameNice(currentName).trim();
+						// System.out.println(currentName + counter++);
+						if (currentName.equals(name)) {
+							found = true;
+							path.push(j);
+							currentDIR = j;
+							continue;
+						}
+					}
+				}
+			}
+		}
+		if (found == false){
+			error = true;
+			System.out.println("Error: " + fullPath + " is not a directory");
+		}
+		if(error == false){ 
+			stat(currentDIR);
+		}
+	}
+
 	public void ls(String dirName){
 		switch (dirName) {
 			case ".":
@@ -182,8 +270,47 @@ public class Fat32Reader {
 		}
 	}
 
-	public void stat() {
+	public void stat(int dir) {
 		
+		System.out.println("Size is " + getBytes(dir+28, 4));
+
+		int attr = getBytes(dir+11, 1);
+		ArrayList<String> attributes = new ArrayList<>();
+		if((attr & 0x20) == 0x20) attributes.add("ATTR_ARCHIVE");
+		if((attr & 0x10) == 0x10) attributes.add("ATTR_DIRECTORY");
+		if((attr & 0x08) == 0x08) attributes.add("ATTR_VOLUME_ID");
+		if((attr & 0x04) == 0x04) attributes.add("ATTR_SYSTEM");
+		if((attr & 0x02) == 0x02) attributes.add("ATTR_HIDDEN");
+		if((attr & 0x01) == 0x01) attributes.add("ATTR_READ_ONLY");
+		System.out.print("Attributes ");
+		for (String string : attributes) {
+			System.out.print(string + " ");
+		}
+
+		String low = Integer.toHexString(getBytes(dir + 26, 2));
+		String hi = Integer.toHexString(getBytes(dir + 20, 2));
+		int firstclust = Integer.parseInt(hi + low, 16);
+		System.out.println("Next cluster is " + Integer.toHexString(firstclust).toUpperCase());
+		
+		currentDIR = root;
+		
+	}
+	public void stat(String dirName){
+		switch (dirName) {
+			case ".":
+				stat(currentDIR);
+				break;
+			case "..":
+				if(currentDIR != root){
+					stat(currentDIR);
+				} else System.out.println("Error: No Directory Found");
+				
+				break;
+			
+			default:
+				statPath(dirName);
+				break;
+		}
 	}
 
 	public int getBytes(int offset, int size) {
