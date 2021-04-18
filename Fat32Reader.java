@@ -93,6 +93,7 @@ public class Fat32Reader {
 		for (String file : files) {
 			System.out.print(file + " ");
 		}
+		currentDIR = root;
 	}
 
 	public void goToDir(int dir, StringTokenizer st, String fullPath) {
