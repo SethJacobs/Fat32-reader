@@ -82,6 +82,10 @@ public class Fat32Reader {
 	}
 
 	public void ls(int dir){
+		if (getBytes(dir+11, 1) == 32){
+			System.out.println("Error: Not a Directory");
+			return;
+		}
 		ArrayList<String> files = new ArrayList<>();
 		if (currentDIR == root){
 			for (int i = root;  i < root + bytesPerCluster; i += 64)  {
