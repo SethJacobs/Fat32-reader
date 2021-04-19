@@ -30,11 +30,11 @@ public class Fat32Reader {
 					break;
 				case "ls":
 					if(arg.length == 1) fr.ls(".");
-					else fr.ls(arg[1]);
+					else fr.ls(arg[1].toUpperCase());
 					break;
 				case "stat":
 					if(arg.length == 1) fr.stat(".");
-					else fr.stat(arg[1]);
+					else fr.stat(arg[1].toUpperCase());
 					break;
 				default:
 					System.out.println("Error: Invalid Argument");
