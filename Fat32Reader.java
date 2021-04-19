@@ -209,7 +209,7 @@ public class Fat32Reader {
 					int attr = getBytes(i+11, 1);
 					String dirName = getStringFromBytes(i, 11);
 					dirName = nameNice(dirName).trim();
-					if ( !dirName.contains("~1") && i != root){
+					if (getBytes(i, 1) != 229 && i != root){
 						if (dirName.equals(name)) {
 							found = true;
 							path.push(i);
