@@ -19,12 +19,9 @@ public class Fat32Reader {
 	public static void main(String[] args) throws IOException {
 		Fat32Reader fr = new Fat32Reader();
 		fr.initiate(args[0]);
-		// // fr.info();
-		// fr.ls("DIR\\A\\SPEC\\..\\..\\..");
-		// fr.stat("DIR");
 		Scanner sc = new Scanner(System.in);
 		while (true){
-			System.out.print("/] ");
+			System.out.print("/"+ fr.getStringFromBytes(fr.getCurrentDir(), 11).trim() +" ] ");
 			String input = sc.nextLine();
 			String[] arg = input.split(" ");
 			switch (arg[0]) {
@@ -180,13 +177,13 @@ public class Fat32Reader {
 	}
 
 	public void splitPath(String path) {
-		StringTokenizer st = new StringTokenizer(path, "\\");
+		StringTokenizer st = new StringTokenizer(path, File.separator);
 		goToDir(root, st, path);
 		// changeDirectory(st.nextToken());
 	}
 
 	public void statPath(String path){
-		StringTokenizer st = new StringTokenizer(path, "\\");
+		StringTokenizer st = new StringTokenizer(path, File.separator);
 		goToDirStat(root, st, path);
 	}
 
@@ -295,6 +292,7 @@ public class Fat32Reader {
 		currentDIR = root;
 		
 	}
+
 	public void stat(String dirName){
 		switch (dirName) {
 			case ".":
@@ -358,5 +356,9 @@ public class Fat32Reader {
         }
         return s;
     }
+
+	public int getCurrentDir() {
+		return currentDIR;
+	}
 	
 }
