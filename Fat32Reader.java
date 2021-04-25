@@ -49,6 +49,12 @@ public class Fat32Reader {
 				case "close":
 					fr.close(arg[1].toUpperCase());
 					break;
+				case "read":
+					fr.read(arg[1].toUpperCase(), Integer.parseInt(arg[2]), Integer.parseInt(arg[3]));
+					break;
+				case "size":
+					fr.size(arg[1].toUpperCase());
+					break;
 				default:
 					System.out.println("Error: Invalid Argument");
 			}
@@ -81,17 +87,6 @@ public class Fat32Reader {
 		System.out.println("BPB_RsvdSecCnt: 0x" + Integer.toHexString(BPB_RsvdSecCnt) + ", " + BPB_RsvdSecCnt);
 		System.out.println("BPB_NumFATs: 0x" + Integer.toHexString(BPB_NumFATs) + ", " + BPB_NumFATs);
 		System.out.println("BPB_FATSz32: 0x" + Integer.toHexString(BPB_FATSz32) + ", " + BPB_FATSz32);
-	}
-
-	public String nameNice(String dir) {
-		if(dir.endsWith("   ")){
-			dir.replaceAll(" ", "");
-			return dir;
-		}
-		dir = dir.replaceAll(" ", "");
-		StringBuilder sb = new StringBuilder(dir);
-		sb.insert(dir.length()-3, ".");
-		return sb.toString();
 	}
 
 	public void ls(int dir){
@@ -156,40 +151,6 @@ public class Fat32Reader {
 		
 	}
 
-	public void open(String name) {
-		StringTokenizer st = new StringTokenizer(name, File.separator);
-		String fullPath  = getCurrentDir() + File.separator + name;
-		if(goToDirCD(currentDIR, st, name, "open")){
-			if (!openList.contains(fullPath)){
-				openList.add(fullPath);
-				System.out.println(name + " is open");
-			} else {
-				System.out.println(name + " is already open");
-			}
-		} else {
-			System.out.println("Error: " + fullPath + " is not a file");
-		}
-	}
-
-	public void close(String name) {
-		StringTokenizer st = new StringTokenizer(name, File.separator);
-		String fullPath  = getCurrentDir() + File.separator + name;
-		if(goToDirCD(currentDIR, st, name, "close")){
-			if (openList.contains(fullPath)){
-				openList.remove(fullPath);
-				System.out.println(name + " is closed");
-			} else {
-				System.out.println(name + " is already closed");
-			}
-		} else {
-			System.out.println("Error: " + fullPath + " is not a file");
-		}
-	}
-
-	public void read() {
-		
-	}
-
 	public void ls(String dirName){
 		StringTokenizer st = new StringTokenizer(dirName, File.separator);
 		switch (dirName) {
@@ -198,13 +159,13 @@ public class Fat32Reader {
 				break;
 			case "..":
 				if(currentDIR != root){
-					goToDirCD(currentDIR, st, dirName, "ls");
+					goToDir(currentDIR, st, dirName, "ls");
 				} else System.out.println("Error: No Directory Found");
 				
 				break;
 			
 			default:
-				goToDirCD(currentDIR, st, dirName, "ls");
+				goToDir(currentDIR, st, dirName, "ls");
 				break;
 		}
 	}
@@ -217,13 +178,13 @@ public class Fat32Reader {
 				break;
 			case "..":
 				if(currentDIR != root){
-					goToDirCD(currentDIR, st, dirName, "stat");
+					goToDir(currentDIR, st, dirName, "stat");
 				} else System.out.println("Error: No Directory Found");
 				
 				break;
 			
 			default:
-				goToDirCD(currentDIR, st, dirName, "stat");
+				goToDir(currentDIR, st, dirName, "stat");
 				break;
 		}
 	}
@@ -233,19 +194,101 @@ public class Fat32Reader {
 			case "..":
 				if(currentDIR != root){
 					StringTokenizer st = new StringTokenizer(dirName, File.separator);
-					goToDirCD(currentDIR, st, dirName, "cd");
+					goToDir(currentDIR, st, dirName, "cd");
 				} else System.out.println("Error: No Directory Found");
 				
 				break;
 			
 			default:
 				StringTokenizer st = new StringTokenizer(dirName, File.separator);
-				goToDirCD(currentDIR, st, dirName, "cd");
+				goToDir(currentDIR, st, dirName, "cd");
 				break;
 		}
 	}
 
-	public boolean goToDirCD(int dir, StringTokenizer st, String fullPath, String command) {
+	//marks a file as open if it exists by putting it in the open list
+	public void open(String name) {
+		StringTokenizer st = new StringTokenizer(name, File.separator);
+		String fullPath  = getCurrentDir() + File.separator + name;
+		if(goToDir(currentDIR, st, name, "open")){
+			if (!openList.contains(fullPath)){
+				openList.add(fullPath);
+				System.out.println(name + " is open");
+			} else {
+				System.out.println(name + " is already open");
+			}
+		} else {
+			System.out.println("Error: " + fullPath + " is not a file");
+		}
+	}
+
+	//Marks a file as closed only if it exists and is in the open list
+	public void close(String name) {
+		StringTokenizer st = new StringTokenizer(name, File.separator);
+		String fullPath  = getCurrentDir() + File.separator + name;
+		if(goToDir(currentDIR, st, name, "close")){
+			if (openList.contains(fullPath)){
+				openList.remove(fullPath);
+				System.out.println(name + " is closed");
+			} else {
+				System.out.println(name + " is already closed");
+			}
+		} else {
+			System.out.println("Error: " + fullPath + " is not a file");
+		}
+	}
+
+	public void size(String dirName) {
+		StringTokenizer st = new StringTokenizer(dirName, File.separator);
+		switch (dirName) {
+			case ".":
+				size(currentDIR, dirName);
+				break;
+			case "..":
+				if(currentDIR != root){
+					if(!goToDir(currentDIR, st, dirName, "size")){
+						System.out.println("Error: " + dirName + " is not a file");
+					}
+				} else System.out.println("Error: No Directory Found");
+				
+				break;
+			
+			default:
+				if(!goToDir(currentDIR, st, dirName, "size")){
+					System.out.println("Error: " + dirName + " is not a file");
+				}
+				break;
+		}
+	}
+
+	public void size(int dir, String path) {
+		System.out.println("Size of " + path + " is " + getBytes(dir+28, 4) + " bytes");
+	}
+
+	//Reads text from a file
+	public void read(String path, int offset, int numOfBytes) {
+
+		//ERRORS
+		if (offset < 0){ 
+			System.out.println("Error: OFFSET must be a positive value");
+			return;
+		}
+		if (numOfBytes <= 0){
+			System.out.println("Error: NUM_BYTES must be a positive value");
+			return;
+		}
+
+		StringTokenizer st = new StringTokenizer(path, File.separator);
+		String fullPath  = getCurrentDir() + File.separator + path;
+		if (openList.contains(fullPath)){
+			
+		} else {
+			System.out.println("Error: file is not open");
+		}
+	}
+
+	//most important method. goes to the directory where we want it to go
+	public boolean goToDir(int dir, StringTokenizer st, String fullPath, String command) {
 		// boolean error = false;
 		int dirTrain = currentDIR;
 		boolean found = false;
@@ -256,7 +299,6 @@ public class Fat32Reader {
 				if (parentMap.get(dirTrain) == null) {
 					found = false;
 					System.out.println("Error: No Directory Found");
-					// error = true;
 				} else{
 					if (command.equals("cd")) cdList.removeLast();
 					found = true;
@@ -280,8 +322,8 @@ public class Fat32Reader {
 						String currentName = getStringFromBytes(j, 11);
 						currentName = nameNice(currentName).trim();
 						// System.out.println(currentName + counter++);
-						if (command.equals("stat") || command.equals("open") || command.equals("ls") || command.equals("close")){
-							if ((attr & 0x10) == 0x10 && (command.equals("open") || command.equals("close")) && !currentName.equals("..")){
+						if (command.equals("stat") || command.equals("open") || command.equals("ls") || command.equals("close") || command.equals("size")) {
+							if ((attr & 0x10) == 0x10 && (command.equals("open") || command.equals("close") || command.equals("size")) && !currentName.equals("..")){
 								return false;
 							}
 							if (currentName.equals(name)) {
@@ -308,14 +350,16 @@ public class Fat32Reader {
 			System.out.println("Error: " + fullPath + " is not a directory");
 			return false;
 		} 
-		else if (command.equals("ls")){
+		else if (command.equals("ls")) {
 			ls(dirTrain);
 		} 
-		else if (command.equals("stat")){
+		else if (command.equals("stat")) {
 			stat(dirTrain);
 		}
 		else if (command.equals("cd")) {
 			currentDIR = dirTrain;
+		} else if (command.equals("size")) {
+			size(dirTrain, fullPath);
 		}
 		return true;
 	}
@@ -372,6 +416,17 @@ public class Fat32Reader {
 		for (String string : cdList) {
 			sb.append(File.separator + string);
 		}
+		return sb.toString();
+	}
+
+	public String nameNice(String dir) {
+		if(dir.endsWith("   ")){
+			dir.replaceAll(" ", "");
+			return dir;
+		}
+		dir = dir.replaceAll(" ", "");
+		StringBuilder sb = new StringBuilder(dir);
+		sb.insert(dir.length()-3, ".");
 		return sb.toString();
 	}
 	
