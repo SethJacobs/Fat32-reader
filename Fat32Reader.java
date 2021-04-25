@@ -157,13 +157,6 @@ public class Fat32Reader {
 			case ".":
 				ls(currentDIR);
 				break;
-			case "..":
-				if(currentDIR != root){
-					goToDir(currentDIR, st, dirName, "ls");
-				} else System.out.println("Error: No Directory Found");
-				
-				break;
-			
 			default:
 				goToDir(currentDIR, st, dirName, "ls");
 				break;
@@ -176,13 +169,6 @@ public class Fat32Reader {
 			case ".":
 				stat(currentDIR);
 				break;
-			case "..":
-				if(currentDIR != root){
-					goToDir(currentDIR, st, dirName, "stat");
-				} else System.out.println("Error: No Directory Found");
-				
-				break;
-			
 			default:
 				goToDir(currentDIR, st, dirName, "stat");
 				break;
@@ -190,20 +176,8 @@ public class Fat32Reader {
 	}
 
 	public void cd(String dirName) {
-		switch (dirName) {
-			case "..":
-				if(currentDIR != root){
-					StringTokenizer st = new StringTokenizer(dirName, File.separator);
-					goToDir(currentDIR, st, dirName, "cd");
-				} else System.out.println("Error: No Directory Found");
-				
-				break;
-			
-			default:
-				StringTokenizer st = new StringTokenizer(dirName, File.separator);
-				goToDir(currentDIR, st, dirName, "cd");
-				break;
-		}
+		StringTokenizer st = new StringTokenizer(dirName, File.separator);
+		goToDir(currentDIR, st, dirName, "cd");			
 	}
 
 	//marks a file as open if it exists by putting it in the open list
@@ -240,24 +214,8 @@ public class Fat32Reader {
 
 	public void size(String dirName) {
 		StringTokenizer st = new StringTokenizer(dirName, File.separator);
-		switch (dirName) {
-			case ".":
-				size(currentDIR, dirName);
-				break;
-			case "..":
-				if(currentDIR != root){
-					if(!goToDir(currentDIR, st, dirName, "size")){
-						System.out.println("Error: " + dirName + " is not a file");
-					}
-				} else System.out.println("Error: No Directory Found");
-				
-				break;
-			
-			default:
-				if(!goToDir(currentDIR, st, dirName, "size")){
-					System.out.println("Error: " + dirName + " is not a file");
-				}
-				break;
+		if(!goToDir(currentDIR, st, dirName, "size")){
+			System.out.println("Error: " + dirName + " is not a file");
 		}
 	}
 
@@ -323,9 +281,15 @@ public class Fat32Reader {
 						currentName = nameNice(currentName).trim();
 						// System.out.println(currentName + counter++);
 						if (command.equals("stat") || command.equals("open") || command.equals("ls") || command.equals("close") || command.equals("size")) {
-							if ((attr & 0x10) == 0x10 && (command.equals("open") || command.equals("close") || command.equals("size")) && !currentName.equals("..")){
-								return false;
-							}
+							// if ((attr & 0x10) == 0x10 && (command.equals("open") || command.equals("close") || command.equals("size")) && !currentName.equals("..")){
+							// 	return false;
+							// }
+							boolean check = st.hasMoreTokens();
+							boolean why = (attr & 0x10) == 0x10;
+							// char c = currentName.charAt(currentName.length()-4);
+							// if (!check && (command.equals("open") || command.equals("close") || command.equals("size")) && currentName.charAt(currentName.length()-4) != '.'){
+							// 	return false;
+							// }
 							if (currentName.equals(name)) {
 								found = true;
 								dirTrain = j;
@@ -345,6 +309,8 @@ public class Fat32Reader {
 				}
 			}
 		}
+		String currentName = getStringFromBytes(dirTrain, 11);
+		currentName = nameNice(currentName).trim();
 		if (found == false){
 			// error = true;
 			System.out.println("Error: " + fullPath + " is not a directory");
@@ -358,8 +324,12 @@ public class Fat32Reader {
 		}
 		else if (command.equals("cd")) {
 			currentDIR = dirTrain;
-		} else if (command.equals("size")) {
+		} 
+		else if (command.equals("size")) {
 			size(dirTrain, fullPath);
+		} 
+		else if ((command.equals("open") || command.equals("close") || command.equals("size")) && !currentName.contains(".")){
+			return false;
 		}
 		return true;
 	}
