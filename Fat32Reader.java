@@ -12,7 +12,7 @@ public class Fat32Reader {
 	int BPB_BytsPerSec, BPB_SecPerClus, BPB_RsvdSecCnt, BPB_NumFATs, BPB_FATSz32, BPB_RootClus;
 	int BPB_RootEntCnt, RootDirSectors, FirstDataSector, FATOffSet, FatSecNum, FATEntOffset;
 	int FirstSectorofCluster, FatTableStart, bytesPerCluster, clustInFat;
-	int currentDIR, root;
+	int currentDIR, root, OFFSET, NUM_BYTES;
 	byte[] data;
 	ArrayList<String> lsList = new ArrayList<>();
 	HashMap<Integer,Integer> parentMap = new HashMap<>();
@@ -40,7 +40,6 @@ public class Fat32Reader {
 					else fr.stat(arg[1].toUpperCase());
 					break;
 				case "cd":
-					// if(arg.length == 1) fr.ls(".");
 					fr.cd(arg[1].toUpperCase());
 					break;
 				case "open":
@@ -99,7 +98,7 @@ public class Fat32Reader {
 			for (int i = root;  i < root + bytesPerCluster; i += 64)  {
 				String dirName = getStringFromBytes(i, 11);
 				dirName = nameNice(dirName).trim();
-				if (i != root && !dirName.contains("~1"))
+				if (i != root && (getBytes(i+11, 1) & 0x02) != 0x02)
 					files.add(dirName);
 			}
 		}
@@ -183,7 +182,9 @@ public class Fat32Reader {
 	//marks a file as open if it exists by putting it in the open list
 	public void open(String name) {
 		StringTokenizer st = new StringTokenizer(name, File.separator);
-		String fullPath  = getCurrentDir() + File.separator + name;
+		String fullPath = new String();
+		if(getCurrentDir().equals(File.separator)) fullPath = File.separator + name;
+		else fullPath  = getCurrentDir() + File.separator + name;
 		if(goToDir(currentDIR, st, name, "open")){
 			if (!openList.contains(fullPath)){
 				openList.add(fullPath);
@@ -219,8 +220,8 @@ public class Fat32Reader {
 		}
 	}
 
-	public void size(int dir, String path) {
-		System.out.println("Size of " + path + " is " + getBytes(dir+28, 4) + " bytes");
+	public int size(int dir) {
+		return getBytes(dir+28, 4);
 	}
 
 	//Reads text from a file
@@ -237,8 +238,11 @@ public class Fat32Reader {
 		}
 
 		StringTokenizer st = new StringTokenizer(path, File.separator);
-		String fullPath  = getCurrentDir() + File.separator + path;
+		String fullPath  = getCurrentDir() + path;
 		if (openList.contains(fullPath)){
+			OFFSET = offset;
+			NUM_BYTES = numOfBytes;
+			goToDir(currentDIR, st, fullPath, "read");
 			
 		} else {
 			System.out.println("Error: file is not open");
@@ -280,12 +284,12 @@ public class Fat32Reader {
 						String currentName = getStringFromBytes(j, 11);
 						currentName = nameNice(currentName).trim();
 						// System.out.println(currentName + counter++);
-						if (command.equals("stat") || command.equals("open") || command.equals("ls") || command.equals("close") || command.equals("size")) {
+						if (command.equals("stat") || command.equals("open") || command.equals("ls") || command.equals("close") || command.equals("size") || command.equals("read")) {
 							// if ((attr & 0x10) == 0x10 && (command.equals("open") || command.equals("close") || command.equals("size")) && !currentName.equals("..")){
 							// 	return false;
 							// }
-							boolean check = st.hasMoreTokens();
-							boolean why = (attr & 0x10) == 0x10;
+							// boolean check = st.hasMoreTokens();
+							// boolean why = (attr & 0x10) == 0x10;
 							// char c = currentName.charAt(currentName.length()-4);
 							// if (!check && (command.equals("open") || command.equals("close") || command.equals("size")) && currentName.charAt(currentName.length()-4) != '.'){
 							// 	return false;
@@ -326,8 +330,35 @@ public class Fat32Reader {
 			currentDIR = dirTrain;
 		} 
 		else if (command.equals("size")) {
-			size(dirTrain, fullPath);
+			System.out.println("Size of " + fullPath + " is " + size(dirTrain) + " bytes");
 		} 
+		else if (command.equals("read")){
+			if(size(dirTrain) <= OFFSET + NUM_BYTES) System.out.println("Error: attempt to read data outside of file bounds");
+			else{
+				ArrayList<Integer> dirStarts = new ArrayList<Integer>();
+				String low = Integer.toHexString(getBytes(dir + 26, 2));
+				String hi = Integer.toHexString(getBytes(dir + 20, 2));
+				int firstclust = Integer.parseInt(hi + low, 16);
+				// clustInFat = getBytes(i+26, 2);
+				getDir(dirStarts, firstclust);
+				int start = OFFSET/bytesPerCluster;
+				int startByte = OFFSET % bytesPerCluster;
+				int remaining = NUM_BYTES - (bytesPerCluster-startByte);
+				if(remaining <= startByte) System.out.println(getStringFromBytes(dirStarts.get(start) + startByte, NUM_BYTES));
+				else{
+					System.out.print(getStringFromBytes(dirStarts.get(start) + startByte, bytesPerCluster-startByte));
+					remaining -= bytesPerCluster-startByte;
+				} 
+				for (int i = start+1; i < dirStarts.size(); i++) {
+					if(remaining > bytesPerCluster){
+						System.out.print(getStringFromBytes(dirStarts.get(i), bytesPerCluster));
+						remaining -= bytesPerCluster;
+					} else{
+						System.out.println(getStringFromBytes(dirStarts.get(i), remaining));
+					}
+				}
+			}
+		}
 		else if ((command.equals("open") || command.equals("close") || command.equals("size")) && !currentName.contains(".")){
 			return false;
 		}
