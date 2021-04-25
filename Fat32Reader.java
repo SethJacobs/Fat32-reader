@@ -15,15 +15,16 @@ public class Fat32Reader {
 	int currentDIR, root;
 	byte[] data;
 	ArrayList<String> lsList = new ArrayList<>();
-	HashSet<Integer> openList = new HashSet<>();
 	HashMap<Integer,Integer> parentMap = new HashMap<>();
+	LinkedList<String> cdList = new LinkedList<>();
+	HashSet<String> openList = new HashSet<>();
 
 	public static void main(String[] args) throws IOException {
 		Fat32Reader fr = new Fat32Reader();
 		fr.initiate(args[0]);
 		Scanner sc = new Scanner(System.in);
 		while (true){
-			System.out.print("/"+ fr.getStringFromBytes(fr.getCurrentDir(), 11).trim() +" ] ");
+			System.out.print(fr.getCurrentDir() +"] ");
 			String input = sc.nextLine();
 			String[] arg = input.split(" ");
 			switch (arg[0]) {
@@ -39,8 +40,11 @@ public class Fat32Reader {
 					else fr.stat(arg[1].toUpperCase());
 					break;
 				case "cd":
-					if(arg.length == 1) fr.ls(".");
-					else fr.cd(arg[1].toUpperCase());
+					// if(arg.length == 1) fr.ls(".");
+					fr.cd(arg[1].toUpperCase());
+					break;
+				case "open":
+					fr.open(arg[1].toUpperCase());
 					break;
 				default:
 					System.out.println("Error: Invalid Argument");
@@ -123,155 +127,156 @@ public class Fat32Reader {
 		System.out.println(" ");
 	}
 
-	public void goToDir(int dir, StringTokenizer st, String fullPath) {
-		int dirTrain = currentDIR;
-		boolean error = false;
-		boolean found = false;
-		Stack<Integer> path = new Stack<>();
-		path.push(root);
-		while(st.hasMoreTokens()){
-			found = false;
-			String name = st.nextToken();
-			if(name.equals("..")){
-				found = true;
-				if (path.peek() == root) {
-					System.out.println("Error: No Directory Found");
-					error = true;
-				} else{
-					path.pop();
-					dirTrain = path.peek();
-				}
-			} else if (dirTrain == root){
-				for (int i = root;  i < root + bytesPerCluster; i += 64)  {
-					int attr = getBytes(i+11, 1);
-					String dirName = getStringFromBytes(i, 11);
-					dirName = nameNice(dirName).trim();
-					if (attr == 16 && !dirName.contains("~1") && i != root){
-						if (dirName.equals(name)) {
-							found = true;
-							path.push(i);
-							dirTrain = i;
-							break;
-						}
-					}
-				}
-			} else {
-				ArrayList<Integer> dirStarts = new ArrayList<Integer>();
-				String low = Integer.toHexString(getBytes(dirTrain+ 26, 2));
-				String hi = Integer.toHexString(getBytes(dirTrain + 20, 2));
-				int firstclust = Integer.parseInt(hi + low, 16);
-				// clustInFat = getBytes(i+26, 2);
-				getDir(dirStarts, firstclust);
-				for (Integer integer : dirStarts) {
-					for (int j = integer+32; j < integer + bytesPerCluster; j+= 64) {
-						String currentName = getStringFromBytes(j, 11);
-						currentName = nameNice(currentName).trim();
-						// System.out.println(currentName + counter++);
-						if (currentName.equals(name)) {
-							found = true;
-							path.push(j);
-							dirTrain = j;
-							continue;
-						}
-					}
-				}
-			}
-		}
-		if (found == false){
-			error = true;
-			System.out.println("Error: " + fullPath + " is not a directory");
-		}
-		if(error == false){ 
-			ls(dirTrain);
-		}
-	}
+	// public void goToDir(int dir, StringTokenizer st, String fullPath) {
+	// 	int dirTrain = currentDIR;
+	// 	boolean error = false;
+	// 	boolean found = false;
+	// 	Stack<Integer> path = new Stack<>();
+	// 	path.push(root);
+	// 	while(st.hasMoreTokens()){
+	// 		found = false;
+	// 		String name = st.nextToken();
+	// 		if(name.equals("..")){
+	// 			found = true;
+	// 			if (path.peek() == root) {
+	// 				System.out.println("Error: No Directory Found");
+	// 				error = true;
+	// 			} else{
+	// 				path.pop();
+	// 				dirTrain = path.peek();
+	// 			}
+	// 		} else if (dirTrain == root){
+	// 			for (int i = root;  i < root + bytesPerCluster; i += 64)  {
+	// 				int attr = getBytes(i+11, 1);
+	// 				String dirName = getStringFromBytes(i, 11);
+	// 				dirName = nameNice(dirName).trim();
+	// 				if (attr == 16 && !dirName.contains("~1") && i != root){
+	// 					if (dirName.equals(name)) {
+	// 						found = true;
+	// 						path.push(i);
+	// 						dirTrain = i;
+	// 						break;
+	// 					}
+	// 				}
+	// 			}
+	// 		} else {
+	// 			ArrayList<Integer> dirStarts = new ArrayList<Integer>();
+	// 			String low = Integer.toHexString(getBytes(dirTrain+ 26, 2));
+	// 			String hi = Integer.toHexString(getBytes(dirTrain + 20, 2));
+	// 			int firstclust = Integer.parseInt(hi + low, 16);
+	// 			// clustInFat = getBytes(i+26, 2);
+	// 			getDir(dirStarts, firstclust);
+	// 			for (Integer integer : dirStarts) {
+	// 				for (int j = integer+32; j < integer + bytesPerCluster; j+= 64) {
+	// 					String currentName = getStringFromBytes(j, 11);
+	// 					currentName = nameNice(currentName).trim();
+	// 					// System.out.println(currentName + counter++);
+	// 					if (currentName.equals(name)) {
+	// 						found = true;
+	// 						path.push(j);
+	// 						dirTrain = j;
+	// 						continue;
+	// 					}
+	// 				}
+	// 			}
+	// 		}
+	// 	}
+	// 	if (found == false){
+	// 		error = true;
+	// 		System.out.println("Error: " + fullPath + " is not a directory");
+	// 	}
+	// 	if(error == false){ 
+	// 		ls(dirTrain);
+	// 	}
+	// }
 
-	public void splitPath(String path) {
-		StringTokenizer st = new StringTokenizer(path, File.separator);
-		goToDir(root, st, path);
-		// changeDirectory(st.nextToken());
-	}
+	// public void splitPath(String path) {
+	// 	StringTokenizer st = new StringTokenizer(path, File.separator);
+	// 	goToDir(root, st, path);
+	// 	// changeDirectory(st.nextToken());
+	// }
 
-	public void statPath(String path){
-		StringTokenizer st = new StringTokenizer(path, File.separator);
-		goToDirStat(root, st, path);
-	}
+	// public void statPath(String path){
+	// 	StringTokenizer st = new StringTokenizer(path, File.separator);
+	// 	goToDirStat(root, st, path);
+	// }
 
-	public void goToDirStat(int dir, StringTokenizer st, String fullPath){
-		boolean error = false;
-		boolean found = false;
-		Stack<Integer> path = new Stack<>();
-		path.push(root);
-		while(st.hasMoreTokens()){
-			found = false;
-			String name = st.nextToken();
-			if(name.equals("..")){
-				found = true;
-				if (path.peek() == root) {
-					System.out.println("Error: No Directory Found");
-					error = true;
-				} else{
-					path.pop();
-					currentDIR = path.peek();
-				}
-			} else if (currentDIR == root){
-				for (int i = root;  i < root + bytesPerCluster; i += 64)  {
-					String dirName = getStringFromBytes(i, 11);
-					dirName = nameNice(dirName).trim();
-					if (getBytes(i, 1) != 229 && i != root){
-						if (dirName.equals(name)) {
-							found = true;
-							path.push(i);
-							currentDIR = i;
-							break;
-						}
-					}
-				}
-			} else {
-				ArrayList<Integer> dirStarts = new ArrayList<Integer>();
-				String low = Integer.toHexString(getBytes(currentDIR+ 26, 2));
-				String hi = Integer.toHexString(getBytes(currentDIR + 20, 2));
-				int firstclust = Integer.parseInt(hi + low, 16);
-				// clustInFat = getBytes(i+26, 2);
-				getDir(dirStarts, firstclust);
-				for (Integer integer : dirStarts) {
-					for (int j = integer+32; j < integer + bytesPerCluster; j+= 64) {
-						String currentName = getStringFromBytes(j, 11);
-						currentName = nameNice(currentName).trim();
-						// System.out.println(currentName + counter++);
-						if (currentName.equals(name)) {
-							found = true;
-							path.push(j);
-							currentDIR = j;
-							continue;
-						}
-					}
-				}
-			}
-		}
-		if (found == false){
-			error = true;
-			System.out.println("Error: " + fullPath + " is not a directory");
-		}
-		if(error == false){ 
-			stat(currentDIR);
-		}
-	}
+	// public void goToDirStat(int dir, StringTokenizer st, String fullPath){
+	// 	boolean error = false;
+	// 	boolean found = false;
+	// 	Stack<Integer> path = new Stack<>();
+	// 	path.push(root);
+	// 	while(st.hasMoreTokens()){
+	// 		found = false;
+	// 		String name = st.nextToken();
+	// 		if(name.equals("..")){
+	// 			found = true;
+	// 			if (path.peek() == root) {
+	// 				System.out.println("Error: No Directory Found");
+	// 				error = true;
+	// 			} else{
+	// 				path.pop();
+	// 				currentDIR = path.peek();
+	// 			}
+	// 		} else if (currentDIR == root){
+	// 			for (int i = root;  i < root + bytesPerCluster; i += 64)  {
+	// 				String dirName = getStringFromBytes(i, 11);
+	// 				dirName = nameNice(dirName).trim();
+	// 				if (getBytes(i, 1) != 229 && i != root){
+	// 					if (dirName.equals(name)) {
+	// 						found = true;
+	// 						path.push(i);
+	// 						currentDIR = i;
+	// 						break;
+	// 					}
+	// 				}
+	// 			}
+	// 		} else {
+	// 			ArrayList<Integer> dirStarts = new ArrayList<Integer>();
+	// 			String low = Integer.toHexString(getBytes(currentDIR+ 26, 2));
+	// 			String hi = Integer.toHexString(getBytes(currentDIR + 20, 2));
+	// 			int firstclust = Integer.parseInt(hi + low, 16);
+	// 			// clustInFat = getBytes(i+26, 2);
+	// 			getDir(dirStarts, firstclust);
+	// 			for (Integer integer : dirStarts) {
+	// 				for (int j = integer+32; j < integer + bytesPerCluster; j+= 64) {
+	// 					String currentName = getStringFromBytes(j, 11);
+	// 					currentName = nameNice(currentName).trim();
+	// 					// System.out.println(currentName + counter++);
+	// 					if (currentName.equals(name)) {
+	// 						found = true;
+	// 						path.push(j);
+	// 						currentDIR = j;
+	// 						continue;
+	// 					}
+	// 				}
+	// 			}
+	// 		}
+	// 	}
+	// 	if (found == false){
+	// 		error = true;
+	// 		System.out.println("Error: " + fullPath + " is not a directory");
+	// 	}
+	// 	if(error == false){ 
+	// 		stat(currentDIR);
+	// 	}
+	// }
 
 	public void ls(String dirName){
+		StringTokenizer st = new StringTokenizer(dirName, File.separator);
 		switch (dirName) {
 			case ".":
 				ls(currentDIR);
 				break;
 			case "..":
 				if(currentDIR != root){
-					ls(currentDIR);
+					goToDirCD(currentDIR, st, dirName, "ls");
 				} else System.out.println("Error: No Directory Found");
 				
 				break;
 			
 			default:
-				splitPath(dirName);
+				goToDirCD(currentDIR, st, dirName, "ls");
 				break;
 		}
 	}
@@ -298,24 +303,25 @@ public class Fat32Reader {
 		int firstclust = Integer.parseInt(hi + low, 16);
 		System.out.println("Next cluster is " + Integer.toHexString(firstclust).toUpperCase());
 		
-		currentDIR = root;
+		// currentDIR = root;
 		
 	}
 
 	public void stat(String dirName){
+		StringTokenizer st = new StringTokenizer(dirName, File.separator);
 		switch (dirName) {
 			case ".":
 				stat(currentDIR);
 				break;
 			case "..":
 				if(currentDIR != root){
-					stat(currentDIR);
+					goToDirCD(currentDIR, st, dirName, "stat");
 				} else System.out.println("Error: No Directory Found");
 				
 				break;
 			
 			default:
-				statPath(dirName);
+				goToDirCD(currentDIR, st, dirName, "stat");
 				break;
 		}
 	}
@@ -325,24 +331,22 @@ public class Fat32Reader {
 			case "..":
 				if(currentDIR != root){
 					StringTokenizer st = new StringTokenizer(dirName, File.separator);
-					goToDirCD(currentDIR, st, dirName);
+					goToDirCD(currentDIR, st, dirName, "cd");
 				} else System.out.println("Error: No Directory Found");
 				
 				break;
 			
 			default:
 				StringTokenizer st = new StringTokenizer(dirName, File.separator);
-				goToDirCD(currentDIR, st, dirName);
+				goToDirCD(currentDIR, st, dirName, "cd");
 				break;
 		}
 	}
 
-	public void goToDirCD(int dir, StringTokenizer st, String fullPath) {
+	public boolean goToDirCD(int dir, StringTokenizer st, String fullPath, String command) {
 		// boolean error = false;
 		int dirTrain = currentDIR;
 		boolean found = false;
-		Stack<Integer> path = new Stack<>();
-		path.push(dirTrain);
 		while(st.hasMoreTokens()){
 			found = false;
 			String name = st.nextToken();
@@ -352,10 +356,11 @@ public class Fat32Reader {
 					System.out.println("Error: No Directory Found");
 					// error = true;
 				} else{
+					if (command.equals("cd")) cdList.removeLast();
 					found = true;
 					dirTrain = parentMap.get(dirTrain);
 				}
-			} else if (dirTrain== root){
+			} else if (dirTrain == root){
 				for (int i = root;  i < root + bytesPerCluster; i += 64)  {
 					int attr = getBytes(i+11, 1);
 					String dirName = getStringFromBytes(i, 11);
@@ -363,10 +368,9 @@ public class Fat32Reader {
 					if (attr == 16 && !dirName.contains("~1") && i != root){
 						if (i == root) parentMap.put(i, null);
 						else parentMap.put(i, root);
-
 						if (dirName.equals(name)) {
+							if (command.equals("cd")) cdList.addLast(name);
 							found = true;
-							path.push(i);
 							dirTrain = i;
 							break;
 						}
@@ -381,15 +385,29 @@ public class Fat32Reader {
 				getDir(dirStarts, firstclust);
 				for (Integer integer : dirStarts) {
 					for (int j = integer+32; j < integer + bytesPerCluster; j+= 64) {
+						int attr = getBytes(j+11, 1);
 						parentMap.put(j, dirTrain);
 						String currentName = getStringFromBytes(j, 11);
 						currentName = nameNice(currentName).trim();
 						// System.out.println(currentName + counter++);
-						if (currentName.equals(name)) {
-							found = true;
-							path.push(j);
-							dirTrain = j;
-							continue;
+						if (command.equals("stat") || command.equals("open") || command.equals("ls")){
+							if ((attr & 0x10) == 0x10 && command.equals("open") && !currentName.equals("..")){
+								return false;
+							}
+							if (currentName.equals(name)) {
+								found = true;
+								dirTrain = j;
+								continue;
+							}
+						} else if (command.equals("cd")) {
+							if ((attr & 0x10) == 0x10 && (attr & 0x02) != 0x02){
+								if (currentName.equals(name)) {
+									cdList.addLast(name);
+									found = true;
+									dirTrain = j;
+									continue;
+								}
+							}
 						}
 					}
 				}
@@ -398,8 +416,32 @@ public class Fat32Reader {
 		if (found == false){
 			// error = true;
 			System.out.println("Error: " + fullPath + " is not a directory");
-		} else {
+			return false;
+		} 
+		else if (command.equals("ls")){
+			ls(dirTrain);
+		} 
+		else if (command.equals("stat")){
+			stat(dirTrain);
+		}
+		else {
 			currentDIR = dirTrain;
+		}
+		return true;
+	}
+
+	public void open(String name) {
+		StringTokenizer st = new StringTokenizer(name, File.separator);
+		String fullPath  = getCurrentDir() + File.separator + name;
+		if(goToDirCD(currentDIR, st, name, "open")){
+			if (!openList.contains(fullPath)){
+				openList.add(fullPath);
+				System.out.println(name + " is open");
+			} else {
+				System.out.println(name + " is already open");
+			}
+		} else {
+			System.out.println("Error: " + fullPath + " is not a file");
 		}
 	}
 
@@ -449,8 +491,13 @@ public class Fat32Reader {
         return s;
     }
 
-	public int getCurrentDir() {
-		return currentDIR;
+	public String getCurrentDir() {
+		if(currentDIR == root) return File.separator;
+		StringBuilder sb = new StringBuilder();
+		for (String string : cdList) {
+			sb.append(File.separator + string);
+		}
+		return sb.toString();
 	}
 	
 }
