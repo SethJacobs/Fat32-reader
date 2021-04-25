@@ -46,6 +46,9 @@ public class Fat32Reader {
 				case "open":
 					fr.open(arg[1].toUpperCase());
 					break;
+				case "close":
+					fr.close(arg[1].toUpperCase());
+					break;
 				default:
 					System.out.println("Error: Invalid Argument");
 			}
@@ -125,6 +128,66 @@ public class Fat32Reader {
 			System.out.print(file + " ");
 		}
 		System.out.println(" ");
+	}
+
+	public void stat(int dir) {
+		
+		System.out.println("Size is " + getBytes(dir+28, 4));
+
+		int attr = getBytes(dir+11, 1);
+		ArrayList<String> attributes = new ArrayList<>();
+		if((attr & 0x20) == 0x20) attributes.add("ATTR_ARCHIVE");
+		if((attr & 0x10) == 0x10) attributes.add("ATTR_DIRECTORY");
+		if((attr & 0x08) == 0x08) attributes.add("ATTR_VOLUME_ID");
+		if((attr & 0x04) == 0x04) attributes.add("ATTR_SYSTEM");
+		if((attr & 0x02) == 0x02) attributes.add("ATTR_HIDDEN");
+		if((attr & 0x01) == 0x01) attributes.add("ATTR_READ_ONLY");
+		System.out.print("Attributes ");
+		for (String string : attributes) {
+			System.out.print(string + " ");
+		}
+
+		String low = Integer.toHexString(getBytes(dir + 26, 2));
+		String hi = Integer.toHexString(getBytes(dir + 20, 2));
+		int firstclust = Integer.parseInt(hi + low, 16);
+		System.out.println("Next cluster is " + Integer.toHexString(firstclust).toUpperCase());
+		
+		// currentDIR = root;
+		
+	}
+
+	public void open(String name) {
+		StringTokenizer st = new StringTokenizer(name, File.separator);
+		String fullPath  = getCurrentDir() + File.separator + name;
+		if(goToDirCD(currentDIR, st, name, "open")){
+			if (!openList.contains(fullPath)){
+				openList.add(fullPath);
+				System.out.println(name + " is open");
+			} else {
+				System.out.println(name + " is already open");
+			}
+		} else {
+			System.out.println("Error: " + fullPath + " is not a file");
+		}
+	}
+
+	public void close(String name) {
+		StringTokenizer st = new StringTokenizer(name, File.separator);
+		String fullPath  = getCurrentDir() + File.separator + name;
+		if(goToDirCD(currentDIR, st, name, "close")){
+			if (openList.contains(fullPath)){
+				openList.remove(fullPath);
+				System.out.println(name + " is closed");
+			} else {
+				System.out.println(name + " is already closed");
+			}
+		} else {
+			System.out.println("Error: " + fullPath + " is not a file");
+		}
+	}
+
+	public void read() {
+		
 	}
 
 	// public void goToDir(int dir, StringTokenizer st, String fullPath) {
@@ -281,32 +344,6 @@ public class Fat32Reader {
 		}
 	}
 
-	public void stat(int dir) {
-		
-		System.out.println("Size is " + getBytes(dir+28, 4));
-
-		int attr = getBytes(dir+11, 1);
-		ArrayList<String> attributes = new ArrayList<>();
-		if((attr & 0x20) == 0x20) attributes.add("ATTR_ARCHIVE");
-		if((attr & 0x10) == 0x10) attributes.add("ATTR_DIRECTORY");
-		if((attr & 0x08) == 0x08) attributes.add("ATTR_VOLUME_ID");
-		if((attr & 0x04) == 0x04) attributes.add("ATTR_SYSTEM");
-		if((attr & 0x02) == 0x02) attributes.add("ATTR_HIDDEN");
-		if((attr & 0x01) == 0x01) attributes.add("ATTR_READ_ONLY");
-		System.out.print("Attributes ");
-		for (String string : attributes) {
-			System.out.print(string + " ");
-		}
-
-		String low = Integer.toHexString(getBytes(dir + 26, 2));
-		String hi = Integer.toHexString(getBytes(dir + 20, 2));
-		int firstclust = Integer.parseInt(hi + low, 16);
-		System.out.println("Next cluster is " + Integer.toHexString(firstclust).toUpperCase());
-		
-		// currentDIR = root;
-		
-	}
-
 	public void stat(String dirName){
 		StringTokenizer st = new StringTokenizer(dirName, File.separator);
 		switch (dirName) {
@@ -360,44 +397,32 @@ public class Fat32Reader {
 					found = true;
 					dirTrain = parentMap.get(dirTrain);
 				}
-			} else if (dirTrain == root){
-				for (int i = root;  i < root + bytesPerCluster; i += 64)  {
-					int attr = getBytes(i+11, 1);
-					String dirName = getStringFromBytes(i, 11);
-					dirName = nameNice(dirName).trim();
-					if (attr == 16 && !dirName.contains("~1") && i != root){
-						if (i == root) parentMap.put(i, null);
-						else parentMap.put(i, root);
-						if (dirName.equals(name)) {
-							if (command.equals("cd")) cdList.addLast(name);
-							found = true;
-							dirTrain = i;
-							break;
-						}
-					}
-				}
-			} else {
+			}
+			else {
 				ArrayList<Integer> dirStarts = new ArrayList<Integer>();
 				String low = Integer.toHexString(getBytes(dirTrain+ 26, 2));
 				String hi = Integer.toHexString(getBytes(dirTrain + 20, 2));
 				int firstclust = Integer.parseInt(hi + low, 16);
 				// clustInFat = getBytes(i+26, 2);
-				getDir(dirStarts, firstclust);
+				if (dirTrain == root) getDir(dirStarts, BPB_RootClus);
+				else getDir(dirStarts, firstclust);
+
 				for (Integer integer : dirStarts) {
 					for (int j = integer+32; j < integer + bytesPerCluster; j+= 64) {
+						if ((j-32) == root) j -= 32;
 						int attr = getBytes(j+11, 1);
 						parentMap.put(j, dirTrain);
 						String currentName = getStringFromBytes(j, 11);
 						currentName = nameNice(currentName).trim();
 						// System.out.println(currentName + counter++);
-						if (command.equals("stat") || command.equals("open") || command.equals("ls")){
-							if ((attr & 0x10) == 0x10 && command.equals("open") && !currentName.equals("..")){
+						if (command.equals("stat") || command.equals("open") || command.equals("ls") || command.equals("close")){
+							if ((attr & 0x10) == 0x10 && (command.equals("open") || command.equals("close")) && !currentName.equals("..")){
 								return false;
 							}
 							if (currentName.equals(name)) {
 								found = true;
 								dirTrain = j;
-								continue;
+								break;
 							}
 						} else if (command.equals("cd")) {
 							if ((attr & 0x10) == 0x10 && (attr & 0x02) != 0x02){
@@ -405,7 +430,7 @@ public class Fat32Reader {
 									cdList.addLast(name);
 									found = true;
 									dirTrain = j;
-									continue;
+									break;
 								}
 							}
 						}
@@ -424,25 +449,10 @@ public class Fat32Reader {
 		else if (command.equals("stat")){
 			stat(dirTrain);
 		}
-		else {
+		else if (command.equals("cd")) {
 			currentDIR = dirTrain;
 		}
 		return true;
-	}
-
-	public void open(String name) {
-		StringTokenizer st = new StringTokenizer(name, File.separator);
-		String fullPath  = getCurrentDir() + File.separator + name;
-		if(goToDirCD(currentDIR, st, name, "open")){
-			if (!openList.contains(fullPath)){
-				openList.add(fullPath);
-				System.out.println(name + " is open");
-			} else {
-				System.out.println(name + " is already open");
-			}
-		} else {
-			System.out.println("Error: " + fullPath + " is not a file");
-		}
 	}
 
 	public int getBytes(int offset, int size) {
