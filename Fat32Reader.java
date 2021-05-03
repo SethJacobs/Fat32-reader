@@ -335,34 +335,40 @@ public class Fat32Reader {
 		else if (command.equals("read")){
 			if(size(dirTrain) <= OFFSET + NUM_BYTES) System.out.println("Error: attempt to read data outside of file bounds");
 			else{
-				ArrayList<Integer> dirStarts = new ArrayList<Integer>();
-				String low = Integer.toHexString(getBytes(dir + 26, 2));
-				String hi = Integer.toHexString(getBytes(dir + 20, 2));
-				int firstclust = Integer.parseInt(hi + low, 16);
-				// clustInFat = getBytes(i+26, 2);
-				getDir(dirStarts, firstclust);
-				int start = OFFSET/bytesPerCluster;
-				int startByte = OFFSET % bytesPerCluster;
-				int remaining = NUM_BYTES - (bytesPerCluster-startByte);
-				if(remaining <= startByte) System.out.println(getStringFromBytes(dirStarts.get(start) + startByte, NUM_BYTES));
-				else{
-					System.out.print(getStringFromBytes(dirStarts.get(start) + startByte, bytesPerCluster-startByte));
-					remaining -= bytesPerCluster-startByte;
-				} 
-				for (int i = start+1; i < dirStarts.size(); i++) {
-					if(remaining > bytesPerCluster){
-						System.out.print(getStringFromBytes(dirStarts.get(i), bytesPerCluster));
-						remaining -= bytesPerCluster;
-					} else{
-						System.out.println(getStringFromBytes(dirStarts.get(i), remaining));
-					}
-				}
+				fileReader(dirTrain);
 			}
 		}
 		else if ((command.equals("open") || command.equals("close") || command.equals("size")) && !currentName.contains(".")){
 			return false;
 		}
 		return true;
+	}
+
+	private void fileReader(int dirTrain) {
+		ArrayList<Integer> dirStarts = new ArrayList<Integer>();
+		String low = Integer.toHexString(getBytes(dirTrain + 26, 2));
+		String hi = Integer.toHexString(getBytes(dirTrain + 20, 2));
+		int firstclust = Integer.parseInt(hi + low, 16);
+		getDir(dirStarts, firstclust);
+		StringBuilder sb = new StringBuilder();
+		int cluster = 0;
+
+		for (int i = 0; i < dirStarts.size()-1; i++) {
+			cluster = (i+1) * bytesPerCluster;
+			if (OFFSET < cluster && NUM_BYTES < cluster){
+				sb.append(getStringFromBytes(dirStarts.get(i) + OFFSET, NUM_BYTES - OFFSET));
+				break;
+			} else if (OFFSET < cluster && NUM_BYTES > cluster){
+				sb.append(getStringFromBytes(dirStarts.get(i) + OFFSET, bytesPerCluster - OFFSET));
+				OFFSET = 0;
+				NUM_BYTES -= bytesPerCluster;
+			} else {
+				OFFSET -= bytesPerCluster;
+				NUM_BYTES -= bytesPerCluster;
+			}
+		}
+		String read = sb.toString();
+		System.out.println(read);
 	}
 
 	public int getBytes(int offset, int size) {
