@@ -249,6 +249,33 @@ public class Fat32Reader {
 		}
 	}
 
+	private void fileReader(int dirTrain) {
+		ArrayList<Integer> dirStarts = new ArrayList<Integer>();
+		String low = Integer.toHexString(getBytes(dirTrain + 26, 2));
+		String hi = Integer.toHexString(getBytes(dirTrain + 20, 2));
+		int firstclust = Integer.parseInt(hi + low, 16);
+		getDir(dirStarts, firstclust);
+		StringBuilder sb = new StringBuilder();
+		int cluster = 0;
+
+		for (int i = 0; i < dirStarts.size()-1; i++) {
+			cluster = (i+1) * bytesPerCluster;
+			if (OFFSET < cluster && NUM_BYTES < cluster){
+				sb.append(getStringFromBytes(dirStarts.get(i) + OFFSET, NUM_BYTES - OFFSET));
+				break;
+			} else if (OFFSET < cluster && NUM_BYTES > cluster){
+				sb.append(getStringFromBytes(dirStarts.get(i) + OFFSET, bytesPerCluster - OFFSET));
+				OFFSET = 0;
+				NUM_BYTES -= bytesPerCluster;
+			} else {
+				OFFSET -= bytesPerCluster;
+				NUM_BYTES -= bytesPerCluster;
+			}
+		}
+		String read = sb.toString();
+		System.out.println(read);
+	}
+
 	//most important method. goes to the directory where we want it to go
 	public boolean goToDir(int dir, StringTokenizer st, String fullPath, String command) {
 		// boolean error = false;
@@ -283,17 +310,7 @@ public class Fat32Reader {
 						parentMap.put(j, dirTrain);
 						String currentName = getStringFromBytes(j, 11);
 						currentName = nameNice(currentName).trim();
-						// System.out.println(currentName + counter++);
 						if (command.equals("stat") || command.equals("open") || command.equals("ls") || command.equals("close") || command.equals("size") || command.equals("read")) {
-							// if ((attr & 0x10) == 0x10 && (command.equals("open") || command.equals("close") || command.equals("size")) && !currentName.equals("..")){
-							// 	return false;
-							// }
-							// boolean check = st.hasMoreTokens();
-							// boolean why = (attr & 0x10) == 0x10;
-							// char c = currentName.charAt(currentName.length()-4);
-							// if (!check && (command.equals("open") || command.equals("close") || command.equals("size")) && currentName.charAt(currentName.length()-4) != '.'){
-							// 	return false;
-							// }
 							if (currentName.equals(name)) {
 								found = true;
 								dirTrain = j;
@@ -342,33 +359,6 @@ public class Fat32Reader {
 			return false;
 		}
 		return true;
-	}
-
-	private void fileReader(int dirTrain) {
-		ArrayList<Integer> dirStarts = new ArrayList<Integer>();
-		String low = Integer.toHexString(getBytes(dirTrain + 26, 2));
-		String hi = Integer.toHexString(getBytes(dirTrain + 20, 2));
-		int firstclust = Integer.parseInt(hi + low, 16);
-		getDir(dirStarts, firstclust);
-		StringBuilder sb = new StringBuilder();
-		int cluster = 0;
-
-		for (int i = 0; i < dirStarts.size()-1; i++) {
-			cluster = (i+1) * bytesPerCluster;
-			if (OFFSET < cluster && NUM_BYTES < cluster){
-				sb.append(getStringFromBytes(dirStarts.get(i) + OFFSET, NUM_BYTES - OFFSET));
-				break;
-			} else if (OFFSET < cluster && NUM_BYTES > cluster){
-				sb.append(getStringFromBytes(dirStarts.get(i) + OFFSET, bytesPerCluster - OFFSET));
-				OFFSET = 0;
-				NUM_BYTES -= bytesPerCluster;
-			} else {
-				OFFSET -= bytesPerCluster;
-				NUM_BYTES -= bytesPerCluster;
-			}
-		}
-		String read = sb.toString();
-		System.out.println(read);
 	}
 
 	public int getBytes(int offset, int size) {
