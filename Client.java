@@ -3,12 +3,12 @@ import java.util.*;
 
 public class Client {
     public static void main(String[] args) throws Exception {
-        Fat32Reader fr = new Fat32Reader();
         Init init = (Init) Naming.lookup("rmi://localhost:2150/Fat32Reader");
+		CurrentDir current = (CurrentDir) Naming.lookup("rmi://localhost:2150/Fat32Reader");
         init.initiate(args[0]);
 		Scanner sc = new Scanner(System.in);
 		while (true){
-			System.out.print(fr.getCurrentDir() +"] ");
+			System.out.print(current.getCurrentDir() +"] ");
 			String input = sc.nextLine();
 			String[] arg = input.split(" ");
 			switch (arg[0]) {
@@ -19,35 +19,54 @@ public class Client {
                     System.out.println(stuff);
 					break;
 				case "ls":
-					System.out.println("ls");
-					// if(arg.length == 1) fr.ls(".");
-					// else fr.ls(arg[1].toUpperCase());
+					LS ls = (LS) Naming.lookup("rmi://localhost:2150/Fat32Reader");
+					String lsResult = "";
+					if(arg.length == 1) lsResult = ls.ls(".");
+					else lsResult = ls.ls(arg[1].toUpperCase());
+					System.out.println(lsResult);
 					break;
 				case "stat":
-					System.out.println("stat");
-					// if(arg.length == 1) fr.stat(".");
-					// else fr.stat(arg[1].toUpperCase());
+					Stat stat = (Stat) Naming.lookup("rmi://localhost:2150/Fat32Reader");
+					String statResult = "";
+					if(arg.length == 1) statResult = stat.stat(".");
+					else statResult = stat.stat(arg[1].toUpperCase());
+					System.out.println(statResult);
 					break;
 				case "cd":
-				System.out.println("cd");
-					// fr.cd(arg[1].toUpperCase());
+					CD cd = (CD) Naming.lookup("rmi://localhost:2150/Fat32Reader");
+					String cdResult = "";
+					cdResult = cd.cd(arg[1].toUpperCase());
+					if(cdResult.equals("")){
+						//dont do anything
+					}
+					else System.out.println(cdResult);
 					break;
 				case "open":
-				System.out.println("open");
-					// fr.open(arg[1].toUpperCase());
+					Open open = (Open) Naming.lookup("rmi://localhost:2150/Fat32Reader");
+					String openResult = "";
+					openResult = open.open(arg[1].toUpperCase());
+					System.out.println(openResult);
 					break;
 				case "close":
-				System.out.println("close");
-					// fr.close(arg[1].toUpperCase());
+					Close close = (Close) Naming.lookup("rmi://localhost:2150/Fat32Reader");
+					String closeResult = "";
+					closeResult = close.close(arg[1].toUpperCase());
+					System.out.println(closeResult);
 					break;
 				case "read":
-				System.out.println("read");
-					// fr.read(arg[1].toUpperCase(), Integer.parseInt(arg[2]), Integer.parseInt(arg[3]));
+					Read read = (Read) Naming.lookup("rmi://localhost:2150/Fat32Reader");
+					String readResult = "";
+					readResult = read.read(arg[1].toUpperCase(), Integer.parseInt(arg[2]), Integer.parseInt(arg[3]));
+					System.out.println(readResult);
 					break;
 				case "size":
-				System.out.println("size");
-					// fr.size(arg[1].toUpperCase());
+					Size size = (Size) Naming.lookup("rmi://localhost:2150/Fat32Reader");
+					String sizeResult = "";
+					sizeResult = size.size(arg[1].toUpperCase());
+					System.out.println(sizeResult);
 					break;
+				case "quit":
+					System.exit(0);
 				default:
 					System.out.println("Error: Invalid Argument");
             }

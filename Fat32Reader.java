@@ -54,6 +54,8 @@ public class Fat32Reader {
 				case "size":
 					fr.size(arg[1].toUpperCase());
 					break;
+				case "quit":
+					System.exit(0);
 				default:
 					System.out.println("Error: Invalid Argument");
 			}
@@ -182,7 +184,7 @@ public class Fat32Reader {
 	//marks a file as open if it exists by putting it in the open list
 	public void open(String name) {
 		StringTokenizer st = new StringTokenizer(name, File.separator);
-		String fullPath = new String();
+		String fullPath = "";
 		if(getCurrentDir().equals(File.separator)) fullPath = File.separator + name;
 		else fullPath  = getCurrentDir() + File.separator + name;
 		if(goToDir(currentDIR, st, name, "open")){
@@ -200,7 +202,9 @@ public class Fat32Reader {
 	//Marks a file as closed only if it exists and is in the open list
 	public void close(String name) {
 		StringTokenizer st = new StringTokenizer(name, File.separator);
-		String fullPath  = getCurrentDir() + File.separator + name;
+		String fullPath  = "";
+		if(getCurrentDir().equals(File.separator)) fullPath = File.separator + name;
+		else fullPath  = getCurrentDir() + File.separator + name;
 		if(goToDir(currentDIR, st, name, "close")){
 			if (openList.contains(fullPath)){
 				openList.remove(fullPath);
@@ -263,11 +267,13 @@ public class Fat32Reader {
 			if (OFFSET < cluster && NUM_BYTES < cluster){
 				sb.append(getStringFromBytes(dirStarts.get(i) + OFFSET, NUM_BYTES - OFFSET));
 				break;
-			} else if (OFFSET < cluster && NUM_BYTES > cluster){
+			} 
+			else if (OFFSET < cluster && NUM_BYTES > cluster){
 				sb.append(getStringFromBytes(dirStarts.get(i) + OFFSET, bytesPerCluster - OFFSET));
 				OFFSET = 0;
 				NUM_BYTES -= bytesPerCluster;
-			} else {
+			} 
+			else {
 				OFFSET -= bytesPerCluster;
 				NUM_BYTES -= bytesPerCluster;
 			}

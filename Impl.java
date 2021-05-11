@@ -4,7 +4,7 @@ import java.rmi.*;
 import java.rmi.server.*;
 import java.util.*;
 
-public class Impl extends UnicastRemoteObject implements Info, LS, Stat, CD, Open, Close, Read, Size, Init {
+public class Impl extends UnicastRemoteObject implements Info, LS, Stat, CD, Open, Close, Read, Size, Init, CurrentDir {
 
     int BPB_BytsPerSec, BPB_SecPerClus, BPB_RsvdSecCnt, BPB_NumFATs, BPB_FATSz32, BPB_RootClus;
 	int BPB_RootEntCnt, RootDirSectors, FirstDataSector, FATOffSet, FatSecNum, FATEntOffset;
@@ -40,46 +40,292 @@ public class Impl extends UnicastRemoteObject implements Info, LS, Stat, CD, Ope
 		root = getDir(list, BPB_RootClus);
 		currentDIR = root;
 	}
+	
+	@Override
+	public String info() throws RemoteException {
+		return "BPB_BytsPerSec: 0x" + Integer.toHexString(BPB_BytsPerSec) + ", " + BPB_BytsPerSec + 
+		"\nBPB_SecPerClus: 0x" + Integer.toHexString(BPB_SecPerClus) + ", " + BPB_SecPerClus + 
+		"\nBPB_RsvdSecCnt: 0x" + Integer.toHexString(BPB_RsvdSecCnt) + ", " + BPB_RsvdSecCnt +
+		"\nBPB_NumFATs: 0x" + Integer.toHexString(BPB_NumFATs) + ", " + BPB_NumFATs +
+		"\nBPB_FATSz32: 0x" + Integer.toHexString(BPB_FATSz32) + ", " + BPB_FATSz32;
+	}
 
-    @Override
-    public void read(String command, int start, int end) throws RemoteException {
-        
+	@Override
+	public String ls(String dirName) throws RemoteException {
+		StringTokenizer st = new StringTokenizer(dirName, File.separator);
+		switch (dirName) {
+			case ".":
+				return ls(currentDIR);
+			default:
+				return goToDir(currentDIR, st, dirName, "ls");
+		}
+	}
+
+	public String ls(int dir){
+		if (getBytes(dir+11, 1) == 32){
+			return "Error: Not a Directory";
+		}
+		StringBuilder sb = new StringBuilder();
+		ArrayList<String> files = new ArrayList<>();
+		if (dir == root){
+			for (int i = root;  i < root + bytesPerCluster; i += 64)  {
+				String dirName = getStringFromBytes(i, 11);
+				dirName = nameNice(dirName).trim();
+				if (i != root && (getBytes(i+11, 1) & 0x02) != 0x02)
+					files.add(dirName);
+			}
+		}
+		ArrayList<Integer> dirStarts = new ArrayList<Integer>();
+		String low = Integer.toHexString(getBytes(dir + 26, 2));
+		String hi = Integer.toHexString(getBytes(dir + 20, 2));
+		int firstclust = Integer.parseInt(hi + low, 16);
+		// clustInFat = getBytes(i+26, 2);
+		getDir(dirStarts, firstclust);
+		for (Integer integer : dirStarts) {
+			for (int j = integer + 32; j < integer + bytesPerCluster; j+= 64) {
+				String currentName = getStringFromBytes(j, 11);
+				if (currentName.contains("\u0000")) continue;
+				currentName = nameNice(currentName).trim();
+				files.add(currentName);
+			}
+		}
+		Collections.sort(files);
+		sb.append(". ");
+		for (String file : files) {
+			sb.append(file + " ");
+		}
+		sb.append("\n ");
+		return sb.toString();
+	}
+
+	@Override
+    public String stat(String dirName) throws RemoteException {
+        StringTokenizer st = new StringTokenizer(dirName, File.separator);
+		switch (dirName) {
+			case ".":
+				return stat(currentDIR);
+			default:
+				return goToDir(currentDIR, st, dirName, "stat");
+		}
     }
 
-    @Override
-    public void close(String command) throws RemoteException {
-        
+	public String stat(int dir) {
+
+		StringBuilder sb = new StringBuilder();
+		
+		sb.append("Size is " + getBytes(dir+28, 4));
+
+		int attr = getBytes(dir+11, 1);
+		ArrayList<String> attributes = new ArrayList<>();
+		if((attr & 0x20) == 0x20) attributes.add("ATTR_ARCHIVE");
+		if((attr & 0x10) == 0x10) attributes.add("ATTR_DIRECTORY");
+		if((attr & 0x08) == 0x08) attributes.add("ATTR_VOLUME_ID");
+		if((attr & 0x04) == 0x04) attributes.add("ATTR_SYSTEM");
+		if((attr & 0x02) == 0x02) attributes.add("ATTR_HIDDEN");
+		if((attr & 0x01) == 0x01) attributes.add("ATTR_READ_ONLY");
+		sb.append("\nAttributes ");
+		for (String string : attributes) {
+			sb.append(string + " ");
+		}
+
+		String low = Integer.toHexString(getBytes(dir + 26, 2));
+		String hi = Integer.toHexString(getBytes(dir + 20, 2));
+		int firstclust = Integer.parseInt(hi + low, 16);
+		sb.append("\nNext cluster is " + Integer.toHexString(firstclust).toUpperCase());
+		return sb.toString();
+	}
+
+	@Override
+    public String cd(String dirName) throws RemoteException {
+        StringTokenizer st = new StringTokenizer(dirName, File.separator);
+		return goToDir(currentDIR, st, dirName, "cd");	
     }
 
-    @Override
-    public void open(String command) throws RemoteException {
-        
+	@Override
+    public String open(String name) throws RemoteException {
+        StringTokenizer st = new StringTokenizer(name, File.separator);
+		String fullPath = "";
+		if(getCurrentDir().equals(File.separator)) fullPath = File.separator + name;
+		else fullPath  = getCurrentDir() + File.separator + name;
+		if(!goToDir(currentDIR, st, name, "open").equals("false")){
+			if (!openList.contains(fullPath)){
+				openList.add(fullPath);
+				return name + " is open";
+			} else {
+				return name + " is already open";
+			}
+		} else {
+			return "Error: " + fullPath + " is not a file";
+		}
     }
 
-    @Override
-    public void cd(String command) throws RemoteException {
-        
+	@Override
+    public String close(String name) throws RemoteException {
+        StringTokenizer st = new StringTokenizer(name, File.separator);
+		String fullPath  = "";
+		if(getCurrentDir().equals(File.separator)) fullPath = File.separator + name;
+		else fullPath  = getCurrentDir() + File.separator + name;
+		if(!goToDir(currentDIR, st, name, "close").equals("false")){
+			if (openList.contains(fullPath)){
+				openList.remove(fullPath);
+				return name + " is closed";
+			} else {
+				return name + " is already closed";
+			}
+		} else {
+			return "Error: " + fullPath + " is not a file";
+		}
     }
 
-    @Override
-    public void stat(String command) throws RemoteException {
-        
-    }
+	@Override
+	public String size(String dirName) throws RemoteException {
+		StringTokenizer st = new StringTokenizer(dirName, File.separator);
+		String answer = goToDir(currentDIR, st, dirName, "size");
+		if(answer.equals("false")){
+			return "Error: " + dirName + " is not a file";
+		}
+		return answer;
+	}
+
+	public int size(int dir) {
+		return getBytes(dir+28, 4);
+	}
 
     @Override
-    public void ls(String command) throws RemoteException {
-        
+    public String read(String path, int offset, int numOfBytes) throws RemoteException {
+        //ERRORS
+		if (offset < 0){ 
+			return "Error: OFFSET must be a positive value";
+		}
+		if (numOfBytes <= 0){
+			return "Error: NUM_BYTES must be a positive value";
+		}
+
+		StringTokenizer st = new StringTokenizer(path, File.separator);
+		String fullPath  = getCurrentDir() + path;
+		if (openList.contains(fullPath)){
+			OFFSET = offset;
+			NUM_BYTES = numOfBytes;
+			return goToDir(currentDIR, st, fullPath, "read");
+		} else {
+			return "Error: file is not open";
+		}
+
     }
 
-    @Override
-    public String info() throws RemoteException {
-		System.out.println("THIS IS FROM THE SERVER");
-        return "BPB_BytsPerSec: 0x" + Integer.toHexString(BPB_BytsPerSec) + ", " + BPB_BytsPerSec + 
-        "\nBPB_SecPerClus: 0x" + Integer.toHexString(BPB_SecPerClus) + ", " + BPB_SecPerClus + 
-        "\nBPB_RsvdSecCnt: 0x" + Integer.toHexString(BPB_RsvdSecCnt) + ", " + BPB_RsvdSecCnt +
-        "\nBPB_NumFATs: 0x" + Integer.toHexString(BPB_NumFATs) + ", " + BPB_NumFATs +
-        "\nBPB_FATSz32: 0x" + Integer.toHexString(BPB_FATSz32) + ", " + BPB_FATSz32;
-    }
+	private String fileReader(int dirTrain) {
+		ArrayList<Integer> dirStarts = new ArrayList<Integer>();
+		String low = Integer.toHexString(getBytes(dirTrain + 26, 2));
+		String hi = Integer.toHexString(getBytes(dirTrain + 20, 2));
+		int firstclust = Integer.parseInt(hi + low, 16);
+		getDir(dirStarts, firstclust);
+		StringBuilder sb = new StringBuilder();
+		int cluster = 0;
+
+		for (int i = 0; i < dirStarts.size()-1; i++) {
+			cluster = (i+1) * bytesPerCluster;
+			if (OFFSET < cluster && NUM_BYTES < cluster){
+				sb.append(getStringFromBytes(dirStarts.get(i) + OFFSET, NUM_BYTES - OFFSET));
+				break;
+			} 
+			else if (OFFSET < cluster && NUM_BYTES > cluster){
+				sb.append(getStringFromBytes(dirStarts.get(i) + OFFSET, bytesPerCluster - OFFSET));
+				OFFSET = 0;
+				NUM_BYTES -= bytesPerCluster;
+			} 
+			else {
+				OFFSET -= bytesPerCluster;
+				NUM_BYTES -= bytesPerCluster;
+			}
+		}
+		String read = sb.toString();
+		return read;
+	}
+
+	//most important method. goes to the directory where we want it to go
+	public String goToDir(int dir, StringTokenizer st, String fullPath, String command) {
+		// boolean error = false;
+		int dirTrain = currentDIR;
+		boolean found = false;
+		while(st.hasMoreTokens()){
+			found = false;
+			String name = st.nextToken();
+			if(name.equals("..")){
+				if (parentMap.get(dirTrain) == null) {
+					found = false;
+					return "Error: No Directory Found";
+				} else{
+					if (command.equals("cd")) cdList.removeLast();
+					found = true;
+					dirTrain = parentMap.get(dirTrain);
+				}
+			}
+			else {
+				ArrayList<Integer> dirStarts = new ArrayList<Integer>();
+				String low = Integer.toHexString(getBytes(dirTrain+ 26, 2));
+				String hi = Integer.toHexString(getBytes(dirTrain + 20, 2));
+				int firstclust = Integer.parseInt(hi + low, 16);
+				// clustInFat = getBytes(i+26, 2);
+				if (dirTrain == root) getDir(dirStarts, BPB_RootClus);
+				else getDir(dirStarts, firstclust);
+
+				for (Integer integer : dirStarts) {
+					for (int j = integer+32; j < integer + bytesPerCluster; j+= 64) {
+						if ((j-32) == root) j -= 32;
+						int attr = getBytes(j+11, 1);
+						parentMap.put(j, dirTrain);
+						String currentName = getStringFromBytes(j, 11);
+						currentName = nameNice(currentName).trim();
+						if (command.equals("stat") || command.equals("open") || command.equals("ls") || command.equals("close") || command.equals("size") || command.equals("read")) {
+							if (currentName.equals(name)) {
+								found = true;
+								dirTrain = j;
+								break;
+							}
+						} else if (command.equals("cd")) {
+							if ((attr & 0x10) == 0x10 && (attr & 0x02) != 0x02){
+								if (currentName.equals(name)) {
+									cdList.addLast(name);
+									found = true;
+									dirTrain = j;
+									break;
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+		String currentName = getStringFromBytes(dirTrain, 11);
+		currentName = nameNice(currentName).trim();
+		if (found == false){
+			// error = true;
+			return "Error: " + fullPath + " is not a directory";
+		} 
+		else if (command.equals("ls")) {
+			return ls(dirTrain);
+		} 
+		else if (command.equals("stat")) {
+			return stat(dirTrain);
+		}
+		else if (command.equals("cd")) {
+			currentDIR = dirTrain;
+		} 
+		else if (command.equals("size")) {
+			return "Size of " + fullPath + " is " + size(dirTrain) + " bytes";
+		} 
+		else if (command.equals("read")){
+			if(size(dirTrain) <= OFFSET + NUM_BYTES) 
+				return "Error: attempt to read data outside of file bounds";
+			else{
+				return fileReader(dirTrain);
+			}
+		}
+		else if ((command.equals("open") || command.equals("close") || command.equals("size")) && !currentName.contains(".")){
+			return "false";
+		}
+		return "";
+	}
 
     public int getBytes(int offset, int size) {
 		String hex = "";
@@ -127,6 +373,7 @@ public class Impl extends UnicastRemoteObject implements Info, LS, Stat, CD, Ope
         return s;
     }
 
+	@Override
 	public String getCurrentDir() {
 		if(currentDIR == root) return File.separator;
 		StringBuilder sb = new StringBuilder();
