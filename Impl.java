@@ -393,6 +393,206 @@ public class Impl extends UnicastRemoteObject implements Info, LS, Stat, CD, Ope
 		sb.insert(dir.length()-3, ".");
 		return sb.toString();
 	}
+
+	public int getBPB_BytsPerSec() {
+		return BPB_BytsPerSec;
+	}
+
+	public void setBPB_BytsPerSec(int bPB_BytsPerSec) {
+		BPB_BytsPerSec = bPB_BytsPerSec;
+	}
+
+	public int getBPB_SecPerClus() {
+		return BPB_SecPerClus;
+	}
+
+	public void setBPB_SecPerClus(int bPB_SecPerClus) {
+		BPB_SecPerClus = bPB_SecPerClus;
+	}
+
+	public int getBPB_RsvdSecCnt() {
+		return BPB_RsvdSecCnt;
+	}
+
+	public void setBPB_RsvdSecCnt(int bPB_RsvdSecCnt) {
+		BPB_RsvdSecCnt = bPB_RsvdSecCnt;
+	}
+
+	public int getBPB_NumFATs() {
+		return BPB_NumFATs;
+	}
+
+	public void setBPB_NumFATs(int bPB_NumFATs) {
+		BPB_NumFATs = bPB_NumFATs;
+	}
+
+	public int getBPB_FATSz32() {
+		return BPB_FATSz32;
+	}
+
+	public void setBPB_FATSz32(int bPB_FATSz32) {
+		BPB_FATSz32 = bPB_FATSz32;
+	}
+
+	public int getBPB_RootClus() {
+		return BPB_RootClus;
+	}
+
+	public void setBPB_RootClus(int bPB_RootClus) {
+		BPB_RootClus = bPB_RootClus;
+	}
+
+	public int getBPB_RootEntCnt() {
+		return BPB_RootEntCnt;
+	}
+
+	public void setBPB_RootEntCnt(int bPB_RootEntCnt) {
+		BPB_RootEntCnt = bPB_RootEntCnt;
+	}
+
+	public int getRootDirSectors() {
+		return RootDirSectors;
+	}
+
+	public void setRootDirSectors(int rootDirSectors) {
+		RootDirSectors = rootDirSectors;
+	}
+
+	public int getFirstDataSector() {
+		return FirstDataSector;
+	}
+
+	public void setFirstDataSector(int firstDataSector) {
+		FirstDataSector = firstDataSector;
+	}
+
+	public int getFATOffSet() {
+		return FATOffSet;
+	}
+
+	public void setFATOffSet(int fATOffSet) {
+		FATOffSet = fATOffSet;
+	}
+
+	public int getFatSecNum() {
+		return FatSecNum;
+	}
+
+	public void setFatSecNum(int fatSecNum) {
+		FatSecNum = fatSecNum;
+	}
+
+	public int getFATEntOffset() {
+		return FATEntOffset;
+	}
+
+	public void setFATEntOffset(int fATEntOffset) {
+		FATEntOffset = fATEntOffset;
+	}
+
+	public int getFirstSectorofCluster() {
+		return FirstSectorofCluster;
+	}
+
+	public void setFirstSectorofCluster(int firstSectorofCluster) {
+		FirstSectorofCluster = firstSectorofCluster;
+	}
+
+	public int getFatTableStart() {
+		return FatTableStart;
+	}
+
+	public void setFatTableStart(int fatTableStart) {
+		FatTableStart = fatTableStart;
+	}
+
+	public int getBytesPerCluster() {
+		return bytesPerCluster;
+	}
+
+	public void setBytesPerCluster(int bytesPerCluster) {
+		this.bytesPerCluster = bytesPerCluster;
+	}
+
+	public int getClustInFat() {
+		return clustInFat;
+	}
+
+	public void setClustInFat(int clustInFat) {
+		this.clustInFat = clustInFat;
+	}
+
+	public int getCurrentDIR() {
+		return currentDIR;
+	}
+
+	public void setCurrentDIR(int currentDIR) {
+		this.currentDIR = currentDIR;
+	}
+
+	public int getRoot() {
+		return root;
+	}
+
+	public void setRoot(int root) {
+		this.root = root;
+	}
+
+	public int getOFFSET() {
+		return OFFSET;
+	}
+
+	public void setOFFSET(int oFFSET) {
+		OFFSET = oFFSET;
+	}
+
+	public int getNUM_BYTES() {
+		return NUM_BYTES;
+	}
+
+	public void setNUM_BYTES(int nUM_BYTES) {
+		NUM_BYTES = nUM_BYTES;
+	}
+
+	public byte[] getData() {
+		return data;
+	}
+
+	public void setData(byte[] data) {
+		this.data = data;
+	}
+
+	public ArrayList<String> getLsList() {
+		return lsList;
+	}
+
+	public void setLsList(ArrayList<String> lsList) {
+		this.lsList = lsList;
+	}
+
+	public HashMap<Integer, Integer> getParentMap() {
+		return parentMap;
+	}
+
+	public void setParentMap(HashMap<Integer, Integer> parentMap) {
+		this.parentMap = parentMap;
+	}
+
+	public LinkedList<String> getCdList() {
+		return cdList;
+	}
+
+	public void setCdList(LinkedList<String> cdList) {
+		this.cdList = cdList;
+	}
+
+	public HashSet<String> getOpenList() {
+		return openList;
+	}
+
+	public void setOpenList(HashSet<String> openList) {
+		this.openList = openList;
+	}
     
     
 }
