@@ -5,10 +5,11 @@ import java.util.*;
 
 public class Client {
     public static void main(String[] args) throws Exception {
-		String serverIP = "192.168.130.3";
+		String serverIP = "192.168.130.2";
 		int serverPort = 1099;
 		Registry registry = LocateRegistry.getRegistry(serverIP, serverPort);
-        Init init = (Init) registry.lookup("Fat32Reader");
+		Impl impl = new Impl();
+		Init init = (Init) registry.lookup("Fat32Reader");
 		CurrentDir current = (CurrentDir) registry.lookup("Fat32Reader");
         init.initiate(args[0]);
 		Scanner sc = new Scanner(System.in);
@@ -18,26 +19,26 @@ public class Client {
 			String[] arg = input.split(" ");
 			switch (arg[0]) {
 				case "info":
-                    Info info = (Info) registry.lookup("Fat32Reader");
+                    Info info = (Info) registry.lookup("Info");
                     String infoResult = info.info();
                     System.out.println(infoResult);
 					break;
 				case "ls":
-					LS ls = (LS) registry.lookup("Fat32Reader");
+					LS ls = (LS) registry.lookup("LS");
 					String lsResult = "";
-					if(arg.length == 1) lsResult = ls.ls(".");
-					else lsResult = ls.ls(arg[1].toUpperCase());
+					if(arg.length == 1) lsResult = ls.ls(".", impl);
+					else lsResult = ls.ls(arg[1].toUpperCase(), impl);
 					System.out.println(lsResult);
 					break;
 				case "stat":
-					Stat stat = (Stat) registry.lookup("Fat32Reader");
+					Stat stat = (Stat) registry.lookup("Stat");
 					String statResult = "";
 					if(arg.length == 1) statResult = stat.stat(".");
 					else statResult = stat.stat(arg[1].toUpperCase());
 					System.out.println(statResult);
 					break;
 				case "cd":
-					CD cd = (CD) registry.lookup("Fat32Reader");
+					CD cd = (CD) registry.lookup("CD");
 					String cdResult = cd.cd(arg[1].toUpperCase());
 					if(cdResult.equals("")){
 						//dont do anything
@@ -45,22 +46,22 @@ public class Client {
 					else System.out.println(cdResult);
 					break;
 				case "open":
-					Open open = (Open) registry.lookup("Fat32Reader");
+					Open open = (Open) registry.lookup("Open");
 					String openResult = open.open(arg[1].toUpperCase());
 					System.out.println(openResult);
 					break;
 				case "close":
-					Close close = (Close) registry.lookup("Fat32Reader");
+					Close close = (Close) registry.lookup("Close");
 					String closeResult = close.close(arg[1].toUpperCase());
 					System.out.println(closeResult);
 					break;
 				case "read":
-					Read read = (Read) registry.lookup("Fat32Reader");
+					Read read = (Read) registry.lookup("Read");
 					String readResult = read.read(arg[1].toUpperCase(), Integer.parseInt(arg[2]), Integer.parseInt(arg[3]));
 					System.out.println(readResult);
 					break;
 				case "size":
-					Size size = (Size) registry.lookup("Fat32Reader");
+					Size size = (Size) registry.lookup("Size");
 					String sizeResult = size.size(arg[1].toUpperCase());
 					System.out.println(sizeResult);
 					break;
