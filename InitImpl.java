@@ -9,8 +9,8 @@ public class InitImpl extends UnicastRemoteObject implements Init{
     }
 
     @Override
-    public void initiate(String command, Impl impl) throws IOException {
-        impl.initiate(command);
+    public void initiate(String command) throws IOException {
+        // impl.initiate(command);
     }
     
 }

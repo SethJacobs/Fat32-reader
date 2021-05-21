@@ -8,8 +8,9 @@ public class LSImpl extends UnicastRemoteObject implements LS {
     }
 
     @Override
-    public String ls(String command, Impl impl) throws RemoteException {
-        return impl.ls(command);
+    public String ls(String command) throws RemoteException {
+        return null;
+        // return impl.ls(command);
     }
     
 }

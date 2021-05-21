@@ -4,7 +4,7 @@ import java.rmi.*;
 import java.rmi.server.*;
 import java.util.*;
 
-public class Impl extends UnicastRemoteObject implements  CurrentDir {
+public class Impl extends UnicastRemoteObject implements Init, CurrentDir, LS, Info, CD, Stat, Size, Open, Close, Read {
 
     int BPB_BytsPerSec, BPB_SecPerClus, BPB_RsvdSecCnt, BPB_NumFATs, BPB_FATSz32, BPB_RootClus;
 	int BPB_RootEntCnt, RootDirSectors, FirstDataSector, FATOffSet, FatSecNum, FATEntOffset;
@@ -20,6 +20,7 @@ public class Impl extends UnicastRemoteObject implements  CurrentDir {
         super();
     }
 
+	@Override
     public void initiate(String paths) throws IOException {
 		ArrayList<Integer> list = new ArrayList<>();
 		Path path = Paths.get(paths);
@@ -40,6 +41,7 @@ public class Impl extends UnicastRemoteObject implements  CurrentDir {
 		currentDIR = root;
 	}
 	
+	@Override
 	public String info() throws RemoteException {
 		return "BPB_BytsPerSec: 0x" + Integer.toHexString(BPB_BytsPerSec) + ", " + BPB_BytsPerSec + 
 		"\nBPB_SecPerClus: 0x" + Integer.toHexString(BPB_SecPerClus) + ", " + BPB_SecPerClus + 
@@ -48,6 +50,7 @@ public class Impl extends UnicastRemoteObject implements  CurrentDir {
 		"\nBPB_FATSz32: 0x" + Integer.toHexString(BPB_FATSz32) + ", " + BPB_FATSz32;
 	}
 
+	@Override
 	public String ls(String dirName) throws RemoteException {
 		System.out.println("RUNNING ON THE SERVER");
 		StringTokenizer st = new StringTokenizer(dirName, File.separator);
@@ -96,6 +99,7 @@ public class Impl extends UnicastRemoteObject implements  CurrentDir {
 		return sb.toString();
 	}
 
+	@Override
     public String stat(String dirName) throws RemoteException {
         StringTokenizer st = new StringTokenizer(dirName, File.separator);
 		switch (dirName) {
@@ -132,11 +136,13 @@ public class Impl extends UnicastRemoteObject implements  CurrentDir {
 		return sb.toString();
 	}
 
+	@Override
     public String cd(String dirName) throws RemoteException {
         StringTokenizer st = new StringTokenizer(dirName, File.separator);
 		return goToDir(currentDIR, st, dirName, "cd");	
     }
 
+	@Override
     public String open(String name) throws RemoteException {
         StringTokenizer st = new StringTokenizer(name, File.separator);
 		String fullPath = "";
@@ -154,6 +160,7 @@ public class Impl extends UnicastRemoteObject implements  CurrentDir {
 		}
     }
 
+	@Override
     public String close(String name) throws RemoteException {
         StringTokenizer st = new StringTokenizer(name, File.separator);
 		String fullPath  = "";
@@ -171,6 +178,7 @@ public class Impl extends UnicastRemoteObject implements  CurrentDir {
 		}
     }
 
+	@Override
 	public String size(String dirName) throws RemoteException {
 		StringTokenizer st = new StringTokenizer(dirName, File.separator);
 		String answer = goToDir(currentDIR, st, dirName, "size");
@@ -184,6 +192,7 @@ public class Impl extends UnicastRemoteObject implements  CurrentDir {
 		return getBytes(dir+28, 4);
 	}
 
+	@Override
     public String read(String path, int offset, int numOfBytes) throws RemoteException {
         //ERRORS
 		if (offset < 0){ 
