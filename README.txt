@@ -1,6 +1,4 @@
 Names: Elie Benzaquen, Binyamin Jachter, Seth Jacobs
 Fat32Reader.java: runs an infinite loop to intake commands to read data from the IMG file given as an initial argument
-To compile: javac Fat32Reader.java
-To run: java Fat32Reader <IMG file>
-The exact math to change clusters mid-directory was a bit of a challenge.
-https://yu.instructure.com/files/1806962/download?download_frd=1
+To compile: first make sure the Server and clinet are all pointing to the IP address of the server
+To run: run the server with the fat 32 img file as an argument. Then on another computer run Client. 
