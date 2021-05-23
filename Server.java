@@ -5,6 +5,7 @@ public class Server {
     public static void main(String[] args) throws Exception {
         
         Impl obj = new Impl();
+        obj.initiate(args[0]);
         // StatImpl statImpl = new StatImpl();
         // SizeImpl sizeImpl = new SizeImpl();
         // ReadImpl readImpl = new ReadImpl();
@@ -17,7 +18,7 @@ public class Server {
         
 
 
-        Registry registry = LocateRegistry.getRegistry("192.168.130.2");
+        Registry registry = LocateRegistry.getRegistry("192.168.130.3");
         // Registry registry = LocateRegistry.getRegistry(2150);
         // registry.rebind("Stat", statImpl);
         // registry.rebind("Size", sizeImpl);

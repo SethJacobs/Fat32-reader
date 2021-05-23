@@ -5,13 +5,13 @@ import java.util.*;
 
 public class Client {
     public static void main(String[] args) throws Exception {
-		String serverIP = "192.168.130.2";
+		String serverIP = "192.168.130.3";
 		int serverPort = 1099;
 		Registry registry = LocateRegistry.getRegistry(serverIP, serverPort);
 		// Impl impl = new Impl();
-		Init init = (Init) registry.lookup("Fat32Reader");
+		// Init init = (Init) registry.lookup("Fat32Reader");
 		CurrentDir current = (CurrentDir) registry.lookup("Fat32Reader");
-        init.initiate(args[0]);
+        // init.initiate(args[0]);
 		Scanner sc = new Scanner(System.in);
 		while (true){
 			System.out.print(current.getCurrentDir() +"] ");

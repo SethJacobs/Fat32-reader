@@ -4,7 +4,7 @@ import java.rmi.*;
 import java.rmi.server.*;
 import java.util.*;
 
-public class Impl extends UnicastRemoteObject implements Init, CurrentDir, LS, Info, CD, Stat, Size, Open, Close, Read {
+public class Impl extends UnicastRemoteObject implements CurrentDir, LS, Info, CD, Stat, Size, Open, Close, Read {
 
     int BPB_BytsPerSec, BPB_SecPerClus, BPB_RsvdSecCnt, BPB_NumFATs, BPB_FATSz32, BPB_RootClus;
 	int BPB_RootEntCnt, RootDirSectors, FirstDataSector, FATOffSet, FatSecNum, FATEntOffset;
@@ -20,7 +20,6 @@ public class Impl extends UnicastRemoteObject implements Init, CurrentDir, LS, I
         super();
     }
 
-	@Override
     public void initiate(String paths) throws IOException {
 		ArrayList<Integer> list = new ArrayList<>();
 		Path path = Paths.get(paths);
@@ -52,7 +51,6 @@ public class Impl extends UnicastRemoteObject implements Init, CurrentDir, LS, I
 
 	@Override
 	public String ls(String dirName) throws RemoteException {
-		System.out.println("RUNNING ON THE SERVER");
 		StringTokenizer st = new StringTokenizer(dirName, File.separator);
 		switch (dirName) {
 			case ".":
@@ -95,7 +93,7 @@ public class Impl extends UnicastRemoteObject implements Init, CurrentDir, LS, I
 		for (String file : files) {
 			sb.append(file + " ");
 		}
-		sb.append("\n ");
+		sb.append(" ");
 		return sb.toString();
 	}
 
