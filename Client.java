@@ -4,14 +4,16 @@ import java.util.*;
 
 public class Client {
     public static void main(String[] args) throws Exception {
-		String serverIP = "192.168.130.3";
-		int serverPort = 1099;
+        // init.initiate(args[0]);
+		Scanner sc = new Scanner(System.in);
+		System.out.println("Please enter Server IP:");
+		String serverIP = sc.nextLine();
+		System.out.println("Please enter the Port Number:");
+		int serverPort = Integer.parseInt(sc.nextLine());
 		Registry registry = LocateRegistry.getRegistry(serverIP, serverPort);
 		// Impl impl = new Impl();
 		// Init init = (Init) registry.lookup("Fat32Reader");
 		CurrentDir current = (CurrentDir) registry.lookup("Fat32Reader");
-        // init.initiate(args[0]);
-		Scanner sc = new Scanner(System.in);
 		while (true){
 			System.out.print(current.getCurrentDir() +"] ");
 			String input = sc.nextLine();
