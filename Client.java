@@ -5,12 +5,14 @@ import java.util.*;
 public class Client {
     public static void main(String[] args) throws Exception {
         // init.initiate(args[0]);
+		Registry registry = null;
+		try{
+			registry = LocateRegistry.getRegistry(args[0], Integer.parseInt(args[1]));
+		} catch (Exception e){
+			System.out.println("Error: hostName or Port not found");
+			System.exit(1);
+		}
 		Scanner sc = new Scanner(System.in);
-		System.out.println("Please enter Server IP:");
-		String serverIP = sc.nextLine();
-		System.out.println("Please enter the Port Number:");
-		int serverPort = Integer.parseInt(sc.nextLine());
-		Registry registry = LocateRegistry.getRegistry(serverIP, serverPort);
 		// Impl impl = new Impl();
 		// Init init = (Init) registry.lookup("Fat32Reader");
 		CurrentDir current = (CurrentDir) registry.lookup("Fat32Reader");

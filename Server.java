@@ -11,7 +11,14 @@ public class Server {
         String IP = sc.nextLine();
         System.out.println("Please enter the connecting Port Number: ");
         int port = Integer.parseInt(sc.nextLine());
-        Registry registry = LocateRegistry.getRegistry(IP, port);
+        Registry registry = null;
+        try{
+            registry = LocateRegistry.getRegistry(IP, port);
+        } catch (Exception e){
+            System.out.println("Error: hostName or Port not found");
+			System.exit(1);
+        }
+        
         registry.rebind("Fat32Reader", obj);
 
         System.out.println("Server Started");
